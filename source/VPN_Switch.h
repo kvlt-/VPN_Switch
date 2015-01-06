@@ -24,6 +24,8 @@ public:
 	virtual BOOL InitInstance();
     virtual int ExitInstance();
 
+protected:
+    HANDLE m_hUniqueMutex;
 };
 
 extern CVPN_SwitchApp theApp;

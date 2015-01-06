@@ -56,6 +56,7 @@ HANDLE CUtils::GetUniqueSessionEvent(LPCTSTR szPrefix, CString &csEventName)
     TCHAR szFormat[MAX_PATH];
     _tcscpy_s(szFormat, _countof(szFormat), szPrefix);
     _tcscat_s(szFormat, _countof(szFormat), _T("%d"));
+
     srand((unsigned int)time(NULL));
 
     HANDLE hEvent = NULL;
@@ -66,6 +67,35 @@ HANDLE CUtils::GetUniqueSessionEvent(LPCTSTR szPrefix, CString &csEventName)
     } 
 
     return hEvent;
+}
+
+HANDLE CUtils::GetUniqueGlobalMutex(LPCTSTR szMutexName)
+{
+    SECURITY_ATTRIBUTES sa;
+    HANDLE hMutex = NULL;
+    PSECURITY_DESCRIPTOR pSD = NULL;
+    PACL pDacl = NULL;
+    
+    do {
+        pSD = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
+        if (!pSD || !InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION)) break;
+
+        pDacl = (PACL)LocalAlloc(LPTR, sizeof(ACL));
+        if (!pDacl || !InitializeAcl(pDacl, sizeof(ACL), ACL_REVISION)) break;
+
+        if (!SetSecurityDescriptorDacl(pSD, TRUE, pDacl, FALSE)) break;
+        
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = FALSE;
+        sa.lpSecurityDescriptor = pSD;
+
+        hMutex = CreateMutex(&sa, TRUE, CString(_T("Global\\")) + szMutexName);
+    } while (0);
+
+    if (pDacl) LocalFree(pDacl);
+    if (pSD) LocalFree(pSD);
+
+    return hMutex;
 }
 
 void CUtils::ConvertRelativeToFullPath(CString &csPath, CString &csBaseDir)
@@ -116,7 +146,7 @@ void CUtils::FormatTimeElapsed(ULONGLONG ullTime, LPTSTR szDest, DWORD dwDestSiz
 void CUtils::FormatSpeedKbs(DWORD dwSpeed, LPTSTR szDest, DWORD dwDestSize)
 {
     if (dwSpeed >= 1024) {
-        _stprintf_s(szDest, dwDestSize, _T("%.2g MB/s"), dwSpeed / 1024.0);
+        _stprintf_s(szDest, dwDestSize, _T("%.2f MB/s"), dwSpeed / 1024.0);
     }
     else {
         _stprintf_s(szDest, dwDestSize, _T("%u kB/s"), dwSpeed);
@@ -125,11 +155,11 @@ void CUtils::FormatSpeedKbs(DWORD dwSpeed, LPTSTR szDest, DWORD dwDestSize)
 
 void CUtils::FormatSizeKb(ULONGLONG ullSize, LPTSTR szDest, DWORD dwDestSize)
 {
-    if (ullSize > 1024 * 1024) {
-        _stprintf_s(szDest, dwDestSize, _T("%.2g GB"), (DOUBLE)ullSize / (1024 * 1024));
+    if (ullSize >= 1048576) {
+        _stprintf_s(szDest, dwDestSize, _T("%.2f GB"), ullSize / 1048576.0);
     }
     else if (ullSize >= 1024) {
-        _stprintf_s(szDest, dwDestSize, _T("%.2g MB"), ullSize / 1024.0);
+        _stprintf_s(szDest, dwDestSize, _T("%.2f MB"), ullSize / 1024.0);
     }
     else {
         _stprintf_s(szDest, dwDestSize, _T("%llu kB"), ullSize);
@@ -138,8 +168,8 @@ void CUtils::FormatSizeKb(ULONGLONG ullSize, LPTSTR szDest, DWORD dwDestSize)
 
 ULONGLONG CUtils::FiletimeDiff(LPFILETIME pftTime1, LPFILETIME pftTime2)
 {
-    PLARGE_INTEGER pliTime1 = (PLARGE_INTEGER)pftTime1;
-    PLARGE_INTEGER pliTime2 = (PLARGE_INTEGER)pftTime2;
+    PLARGE_INTEGER pt1 = (PLARGE_INTEGER)pftTime1;
+    PLARGE_INTEGER pt2 = (PLARGE_INTEGER)pftTime2;
 
-    return pliTime1->QuadPart > pliTime2->QuadPart ? pliTime1->QuadPart - pliTime2->QuadPart : pliTime2->QuadPart - pliTime1->QuadPart;
+    return (pt1->QuadPart > pt2->QuadPart ? pt1->QuadPart - pt2->QuadPart : pt2->QuadPart - pt1->QuadPart) / 10000000;
 }

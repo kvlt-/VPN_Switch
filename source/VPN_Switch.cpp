@@ -3,6 +3,7 @@
 //
 
 #include "stdafx.h"
+#include "Utils.h"
 #include "MainWnd.h"
 
 #include "VPN_Switch.h"
@@ -14,6 +15,7 @@ CVPN_SwitchApp::CVPN_SwitchApp()
 {
     // support Restart Manager
     m_dwRestartManagerSupportFlags = AFX_RESTART_MANAGER_SUPPORT_RESTART;
+    m_hUniqueMutex = NULL;
 }
 
 BOOL CVPN_SwitchApp::InitInstance()
@@ -26,6 +28,10 @@ BOOL CVPN_SwitchApp::InitInstance()
 
     // init CWinApp base
 	CWinApp::InitInstance();
+
+    // ensure one application instance
+    m_hUniqueMutex = CUtils::GetUniqueGlobalMutex(DEF_UNIQUE_MUTEX_NAME);
+    if (!m_hUniqueMutex) return FALSE;
 
     // init winsock
 	if (!AfxSocketInit()) return FALSE;
@@ -50,6 +56,8 @@ BOOL CVPN_SwitchApp::InitInstance()
 int CVPN_SwitchApp::ExitInstance()
 {
     CWinApp::ExitInstance();
+
+    CLOSEHANDLE(m_hUniqueMutex);
 
     return 0;
 }
