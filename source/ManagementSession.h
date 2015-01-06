@@ -14,7 +14,7 @@ public:
         HANDLE hDataReadyEvent;
         HANDLE hSessionReadyEvent;
 
-        BOOL Validate() { return uiPort >= DEF_PORT_MIN && uiPort <= DEF_PORT_MAX && uiBytecountInterval > 0 && !csPasswordA.IsEmpty() && hDataReadyEvent && hSessionReadyEvent; };
+        BOOL Validate() { return uiPort > 0 && uiBytecountInterval > 0 && !csPasswordA.IsEmpty() && hDataReadyEvent && hSessionReadyEvent; };
         void Reset() { uiPort = 0; uiBytecountInterval = 0 ; csPasswordA.Empty(); hDataReadyEvent = NULL; hSessionReadyEvent = NULL; };
     } ARGS_T;
 

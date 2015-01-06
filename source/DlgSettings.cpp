@@ -3,6 +3,11 @@
 #include "Utils.h"
 #include "DlgSettings.h"
 
+#define DEF_PORT_MIN            1025            // min OpenVPN management port
+#define DEF_PORT_MAX            65535           // max OpenVPN management port
+#define DEF_PASSWORD_MIN        4               // min OpenVPN management password length
+#define DEF_PASSWORD_MAX        12              // max OpenVPN management password length
+
 
 BEGIN_MESSAGE_MAP(CDlgSettings, CDialog)
     ON_MESSAGE(WM_SETTINGS_EVENT, &OnSettingsEvent)
@@ -12,8 +17,6 @@ END_MESSAGE_MAP()
 CDlgSettings::CDlgSettings(CConfiguration *pConfig, CWnd *pParentWnd) : CDialog(IDD, pParentWnd)
 {
     m_pConfig = pConfig;
-    m_bDNS = FALSE;
-    m_uiPort = 0;
 }
 
 CDlgSettings::~CDlgSettings()
@@ -25,13 +28,13 @@ void CDlgSettings::DoDataExchange(CDataExchange* pDX)
 {
     CDialog::DoDataExchange(pDX);
 
-    DDX_Check(pDX, IDC_SETTINGS_DNS, m_bDNS);
-    DDX_Text(pDX, IDC_SETTINGS_PROFILESDIR, m_csProfilesDir);
-    DDX_Text(pDX, IDC_SETTINGS_PORT, m_uiPort);
-    DDV_Port(pDX, m_uiPort);
-    DDX_Text(pDX, IDC_SETTINGS_PASSWORD, m_csPassword);
-    DDV_Password(pDX, m_csPassword);
-    DDX_Text(pDX, IDC_SETTINGS_LOGFILE, m_csLogFile);
+    DDX_Check(pDX, IDC_SETTINGS_DNS, m_data.bPreventDNSLeaks);
+    DDX_Text(pDX, IDC_SETTINGS_PROFILESDIR, m_data.csProfilesDir);
+    DDX_Text(pDX, IDC_SETTINGS_PORT, m_data.uiPort);
+    DDV_Port(pDX, m_data.uiPort);
+    DDX_Text(pDX, IDC_SETTINGS_PASSWORD, m_data.csPassword);
+    DDV_Password(pDX, m_data.csPassword);
+    DDX_Text(pDX, IDC_SETTINGS_LOGFILE, m_data.csLogFile);
 }
 
 
@@ -82,11 +85,7 @@ void CDlgSettings::DDV_Password(CDataExchange *pDX, CString &csPassword)
 
 BOOL CDlgSettings::OnInitDialog()
 {
-    m_bDNS          = m_pConfig->GetPreventDNSLeaks();
-    m_pConfig->GetProfilesDir(m_csProfilesDir);
-    m_uiPort        = m_pConfig->GetPort();
-    m_pConfig->GetPassword(m_csPassword);
-    m_pConfig->GetLogFile(m_csLogFile);
+    m_pConfig->GetData(m_data);
 
     CDialog::OnInitDialog();
 
@@ -99,11 +98,7 @@ void CDlgSettings::OnOK()
 {
     if (!UpdateData(TRUE)) return;
 
-    m_pConfig->SetPreventDNSLeaks(m_bDNS);
-    m_pConfig->SetProfilesDir(m_csProfilesDir);
-    m_pConfig->SetPort(m_uiPort);
-    m_pConfig->SetPassword(m_csPassword);
-    m_pConfig->SetLogFile(m_csLogFile);
+    m_pConfig->SetData(m_data);
 
     EndDialog(IDOK);
 }

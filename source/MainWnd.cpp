@@ -62,6 +62,19 @@ BOOL CMainWnd::Init()
     BOOL bRet = FALSE;
 
     do {
+        m_pConfig = new CConfiguration();
+        if (!m_pConfig) break;
+
+        m_pController = new CController(m_pConfig, GetSafeHwnd());
+        if (!m_pController) break;
+
+        m_hTrayMenu = LoadMenu(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_TRAY_MENU));
+        if (!m_hTrayMenu) break;
+
+        if (!m_pConfig->Load()) break;
+
+        if (!m_TrayNotifier.Init(GetSafeHwnd(), WM_TRAY_EVENT)) break;
+
         m_TrayData.cbSize = sizeof(NOTIFYICONDATA);
         m_TrayData.hWnd = GetSafeHwnd();
         m_TrayData.uID = 0;
@@ -75,19 +88,6 @@ BOOL CMainWnd::Init()
             ZeroMemory(&m_TrayData, sizeof(m_TrayData));
             break;
         }
-
-        m_pConfig = new CConfiguration();
-        if (!m_pConfig) break;
-
-        m_pController = new CController(m_pConfig, GetSafeHwnd());
-        if (!m_pController) break;
-
-        m_hTrayMenu = LoadMenu(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_TRAY_MENU));
-        if (!m_hTrayMenu) break;
-
-        if (!m_pConfig->Load()) break;
-
-        if (!m_TrayNotifier.Init(GetSafeHwnd(), WM_TRAY_EVENT)) break;
 
         bRet = TRUE;
     } while (0);
@@ -400,19 +400,19 @@ void CMainWnd::ChangeTrayTipStats()
     CUtils::FormatSizeKb(data.ullTotalInKb, szTotalDownload, _countof(szTotalDownload));
     CUtils::FormatSizeKb(data.ullTotalOutKb, szTotalUpload, _countof(szTotalUpload));
 
-    CString csIP;
-    m_pController->GetExternalIP(csIP);
-
     TCHAR szUptime[64];
     CUtils::FormatTimeElapsed(data.ullTotalTime, szUptime, _countof(szUptime));
+
+    CString csIP;
+    m_pController->GetExternalIP(csIP);
 
     CString csLabelIP, csLabelUptime;
     csLabelIP.LoadString(IDS_STR_EXTERNAL_IP);
     csLabelUptime.LoadString(IDS_STR_UPTIME);
 
     CString csTip;
-    csTip.Format(_T("D:  %s (%s)\r\nU:  %s (%s)\r\n%s: %s\r\n%s: %s"),
-        szSpeedDownload, szTotalDownload, szSpeedUpload, szTotalUpload, csLabelIP, csIP, csLabelUptime, szUptime);
+    csTip.Format(_T("%s\r\nD:  %-10s (%s)\r\nU:  %-10s (%s)\r\n%s: %s\r\n%s: %s"),
+        DEF_APP_NAME, szSpeedDownload, szTotalDownload, szSpeedUpload, szTotalUpload, csLabelUptime, szUptime, csLabelIP, csIP);
 
     ChangeTrayTip(csTip);
 }

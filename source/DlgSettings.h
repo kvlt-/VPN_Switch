@@ -16,11 +16,7 @@ public:
 protected:
     CConfiguration *m_pConfig;
 
-    BOOL m_bDNS;
-    CString m_csProfilesDir;
-    UINT m_uiPort;
-    CString m_csPassword;
-    CString m_csLogFile;
+    CConfiguration::DATA_T m_data;
 
 protected:
     virtual BOOL OnInitDialog();

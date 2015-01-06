@@ -246,16 +246,15 @@ void CController::GetTrafficData(CController::TRAFFIC_DATA_T &data)
         ullBytesInDiff  = pbcLast->ullBytesIn;
         ullBytesOutDiff = pbcLast->ullBytesOut;
     }
-    ullTimeDiff /= 10000000;
 
     FILETIME ftTime;
     GetSystemTimeAsFileTime(&ftTime);
 
-    data.ullTotalTime   = CUtils::FiletimeDiff(&ftTime, &ftConnectTime) / 10000000;
-    data.ullTotalInKb   = pbcLast->ullBytesIn / 1024;
-    data.ullTotalOutKb  = pbcLast->ullBytesOut / 1024;
-    data.dwSpeedInKbs   = (DWORD)((ullBytesInDiff / 1024) / ullTimeDiff);
-    data.dwSpeedOutKbs  = (DWORD)((ullBytesOutDiff / 1024) / ullTimeDiff);
+    data.ullTotalTime   = CUtils::FiletimeDiff(&ftTime, &ftConnectTime);
+    data.ullTotalInKb   = pbcLast->ullBytesIn >> 10;
+    data.ullTotalOutKb  = pbcLast->ullBytesOut >> 10;
+    data.dwSpeedInKbs   = (DWORD)((ullBytesInDiff >> 10) / ullTimeDiff);
+    data.dwSpeedOutKbs  = (DWORD)((ullBytesOutDiff >> 10) / ullTimeDiff);
 }
 
 VPN_COMMAND CController::GetCommand()

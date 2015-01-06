@@ -5,14 +5,11 @@
 
 #define DEF_APP_NAME            _T("VPN_Switch")
 #define DEF_COMPANY_NAME        _T("kvlt")
+#define DEF_UNIQUE_MUTEX_NAME   DEF_APP_NAME _T("_mtx")
 
-#define DEF_MAX_PROFILES        128             // max loaded OpenVPN profiles
+#define DEF_MAX_PROFILES        64              // max loaded OpenVPN profiles
 #define DEF_OPENVPN_TIMEOUT     10              // max timeout of OpenVPN operations [s]
 
-#define DEF_PORT_MIN            1025            // min OpenVPN management port
-#define DEF_PORT_MAX            65535           // max OpenVPN management port
-#define DEF_PASSWORD_MIN        4               // min OpenVPN management password length
-#define DEF_PASSWORD_MAX        12              // max OpenVPN management password length
 
 // TODO: log window
 
@@ -61,11 +58,6 @@ typedef struct
 
 // getter/setter macros
 
-#define DECLARE_GETTER_REF(Type,Fnc,Member) \
-    __inline const Type& Fnc() const \
-{ \
-    return Member; \
-}
 #define DECLARE_GETTER_VAL(Type,Fnc,Member) \
     __inline Type Fnc() const \
 { \
@@ -74,30 +66,30 @@ typedef struct
 #define DECLARE_GETTER_REF_LOCK(Type,Fnc,Member) \
     __inline void Fnc(Type &value) \
 { \
-    EnterCriticalSection(&m_crsMain); \
+    Lock(); \
     value = Member; \
-    LeaveCriticalSection(&m_crsMain); \
+    Unlock(); \
 }
 #define DECLARE_GETTER_VAL_LOCK(Type,Fnc,Member) \
     __inline const Type Fnc() \
 { \
     Type value; \
-    EnterCriticalSection(&m_crsMain); \
+    Lock(); \
     value = Member; \
-    LeaveCriticalSection(&m_crsMain); \
+    Unlock(); \
     return value; \
 }
 #define DECLARE_SETTER_REF_LOCK(Type,Fnc,Member) \
     __inline void Fnc(Type &value) \
 { \
-    EnterCriticalSection(&m_crsMain); \
+    Lock(); \
     Member = value; \
-    LeaveCriticalSection(&m_crsMain); \
+    Unlock(); \
 }
 #define DECLARE_SETTER_VAL_LOCK(Type,Fnc,Member) \
     __inline void Fnc(Type value) \
 { \
-    EnterCriticalSection(&m_crsMain); \
+    Lock(); \
     Member = value; \
-    LeaveCriticalSection(&m_crsMain); \
+    Unlock(); \
 }
