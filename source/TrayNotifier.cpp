@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "TrayNotifier.h"
 
-#define DEF_TRAY_CHECK_INTERVAL   250   // how often check if mouse left tray icon area [ms]
+#define DEF_TRAY_CHECK_INTERVAL   100   // how often check if mouse left tray icon area [ms]
 
 
 CTrayNotifier::CTrayNotifier()
@@ -99,7 +99,6 @@ DWORD CTrayNotifier::ThreadMain()
             bStop = TRUE;
             break;
         }
-
     } while (!bStop);
 
     return 0;
