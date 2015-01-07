@@ -11,8 +11,8 @@ public:
     static BOOL IsPortAvailable(UINT uiPort);
     static HANDLE GetUniqueSessionEvent(LPCTSTR szPrefix, CString &csEventName);
     static HANDLE GetUniqueGlobalMutex(LPCTSTR szMutexName);
-    static void ConvertRelativeToFullPath(CString &csPath, CString &csBaseDir);
-    static void ConvertFullToRelativePath(CString &csPath, CString &csBaseDir);
+    static CString ConvertRelativeToFullPath(CString &csPath, CString &csBaseDir, BOOL bOverwrite = FALSE);
+    static CString ConvertFullToRelativePath(CString &csPath, CString &csBaseDir, BOOL bOverwrite = FALSE);
     static void FormatTimeElapsed(ULONGLONG ullTime, LPTSTR szDest, DWORD dwDestSize);
     static void FormatSpeedKbs(DWORD dwSpeed, LPTSTR szDest, DWORD dwDestSize);
     static void FormatSizeKb(ULONGLONG ullSize, LPTSTR szDest, DWORD dwDestSize);

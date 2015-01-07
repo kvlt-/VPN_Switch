@@ -3,6 +3,8 @@
 #include "Utils.h"
 #include "Configuration.h"
 
+// openvpn registry values
+
 #define DEF_REG_OPENVPN_KEY         _T("Software\\OpenVPN")
 #define DEF_REG_OPENVPNGUI_KEY      _T("Software\\OpenVPN-GUI")
 #define DEF_REG_OPENVPN_PATH        _T("")
@@ -10,10 +12,12 @@
 #define DEF_REG_OPENVPN_CONFEXT     _T("config_ext")
 #define DEF_REG_OPENVPN_EXEPATH     _T("exe_path")
 
-#define DEF_CONF_DIR                _T("%APPDATA%\\") DEF_COMPANY_NAME
+// ini file general section
+
+#define DEF_SECTION_GENERAL         _T("general")
 
 #define DEF_CONF_PREVENTDNSLEAKS    _T("prevent_dns_leaks")
-#define DEF_CONF_PREVENTDNSLEAKS_DEFAULT 1
+#define DEF_CONF_PREVENTDNSLEAKS_DEFAULT TRUE
 #define DEF_CONF_PROFILES           _T("profile_dir")
 #define DEF_CONF_PROFILES_DEFAULT   _T("profiles")
 #define DEF_CONF_PORT               _T("port")
@@ -25,12 +29,21 @@
 #define DEF_CONF_LOGFILE            _T("log_file")
 #define DEF_CONF_LOGFILE_DEFAULT    DEF_APP_NAME _T(".log")
 
+// load / save macros
 
+#define _CONF_LOAD(x,val,opt,def)   val = m_app->GetProfile ## x ## (DEF_SECTION_GENERAL, opt, def)
+#define _CONF_SAVE(x,val,opt)       m_app->WriteProfile ## x ## (DEF_SECTION_GENERAL, opt, val)
+
+#define CONF_LOAD_INT(val,opt)      _CONF_LOAD(Int,val,opt,opt ## _DEFAULT)
+#define CONF_LOAD_STRING(val,opt)   _CONF_LOAD(String,val,opt,opt ## _DEFAULT)
+#define CONF_SAVE_INT(val,opt)      _CONF_SAVE(Int,val,opt)
+#define CONF_SAVE_STRING(val,opt)   _CONF_SAVE(String,val,opt)
 
 
 
 CConfiguration::CConfiguration()
 {
+    m_app = AfxGetApp();
     m_bLoaded = FALSE;
     m_bLocked = FALSE;
 
@@ -117,25 +130,23 @@ BOOL CConfiguration::LoadMain()
 #else
         m_csConfigDir = m_csBinDir;
 #endif
-
         if (GetFileAttributes(m_csConfigDir) == INVALID_FILE_ATTRIBUTES) {
             if (!CreateDirectory(m_csConfigDir, NULL)) break;
         }
+        m_csConfFile.Format(_T("%s\\%s.ini"), m_csConfigDir, DEF_APP_NAME);
 
-        m_csIniFile.Format(_T("%s\\%s.ini"), m_csConfigDir, DEF_APP_NAME);
+        free((void *)m_app->m_pszProfileName);
+        m_app->m_pszProfileName = _tcsdup(m_csConfFile);
 
-        m_data.bPreventDNSLeaks = GetPrivateProfileInt(DEF_APP_NAME, DEF_CONF_PREVENTDNSLEAKS, DEF_CONF_PREVENTDNSLEAKS_DEFAULT, m_csIniFile);
-        GetPrivateProfileString(DEF_APP_NAME, DEF_CONF_PROFILES, DEF_CONF_PROFILES_DEFAULT, m_data.csProfilesDir.GetBuffer(MAX_PATH), MAX_PATH, m_csIniFile);
-        m_data.csProfilesDir.ReleaseBuffer();
-        m_data.uiPort = GetPrivateProfileInt(DEF_APP_NAME, DEF_CONF_PORT, DEF_CONF_PORT_DEFAULT, m_csIniFile);
-        m_data.uiBytecountInterval = GetPrivateProfileInt(DEF_APP_NAME, DEF_CONF_BYTECOUNT_INTERVAL, DEF_CONF_BYTECOUNT_INTERVAL_DEFAULT, m_csIniFile);
-        GetPrivateProfileString(DEF_APP_NAME, DEF_CONF_PASSWORD, DEF_CONF_PASSWORD_DEFAULT, m_data.csPassword.GetBuffer(64), 64, m_csIniFile);
-        m_data.csPassword.ReleaseBuffer();
-        GetPrivateProfileString(DEF_APP_NAME, DEF_CONF_LOGFILE, DEF_CONF_LOGFILE_DEFAULT, m_data.csLogFile.GetBuffer(MAX_PATH), MAX_PATH, m_csIniFile);
-        m_data.csLogFile.ReleaseBuffer();
+        CONF_LOAD_INT(m_data.bPreventDNSLeaks, DEF_CONF_PREVENTDNSLEAKS);
+        CONF_LOAD_STRING(m_data.csProfilesDir, DEF_CONF_PROFILES);
+        CONF_LOAD_INT(m_data.uiPort, DEF_CONF_PORT);
+        CONF_LOAD_STRING(m_data.csPassword, DEF_CONF_PASSWORD);
+        CONF_LOAD_INT(m_data.uiBytecountInterval, DEF_CONF_BYTECOUNT_INTERVAL);
+        CONF_LOAD_STRING(m_data.csLogFile, DEF_CONF_LOGFILE);
 
-        CUtils::ConvertRelativeToFullPath(m_data.csProfilesDir, m_csConfigDir);
-        CUtils::ConvertRelativeToFullPath(m_data.csLogFile, m_csConfigDir);
+        CUtils::ConvertRelativeToFullPath(m_data.csProfilesDir, m_csConfigDir, TRUE);
+        CUtils::ConvertRelativeToFullPath(m_data.csLogFile, m_csConfigDir, TRUE);
 
         if (GetFileAttributes(m_data.csProfilesDir) == INVALID_FILE_ATTRIBUTES) {
             if (!CreateDirectory(m_data.csProfilesDir, NULL)) break;
@@ -147,35 +158,21 @@ BOOL CConfiguration::LoadMain()
     return bRet;
 }
 
-BOOL CConfiguration::LoadRegistryString(CRegKey &key, LPCTSTR szValue, CString &csDest, ULONG ulMaxLength)
-{
-    ULONG ulSize = ulMaxLength;
-    LSTATUS ret = key.QueryStringValue(szValue, csDest.GetBuffer(ulSize), &ulSize);
-    csDest.ReleaseBuffer();
-    return ret == ERROR_SUCCESS;
-}
-
 BOOL CConfiguration::Save()
 {
     BOOL bRet = FALSE;
-    TCHAR szValue[32];
 
     Lock();
 
     do {
         if (!m_bLoaded) { bRet = TRUE; break; }
 
-        _stprintf_s(szValue, _countof(szValue), _T("%d"), m_data.bPreventDNSLeaks);
-        if (!WritePrivateProfileString(DEF_APP_NAME, DEF_CONF_PREVENTDNSLEAKS, szValue, m_csIniFile)) break;
-        CUtils::ConvertFullToRelativePath(m_data.csProfilesDir, m_csConfigDir);
-        if (!WritePrivateProfileString(DEF_APP_NAME, DEF_CONF_PROFILES, m_data.csProfilesDir, m_csIniFile)) break;
-        _stprintf_s(szValue, _countof(szValue), _T("%d"), m_data.uiPort);
-        if (!WritePrivateProfileString(DEF_APP_NAME, DEF_CONF_PORT, szValue, m_csIniFile)) break;
-        _stprintf_s(szValue, _countof(szValue), _T("%d"), m_data.uiBytecountInterval);
-        if (!WritePrivateProfileString(DEF_APP_NAME, DEF_CONF_BYTECOUNT_INTERVAL, szValue, m_csIniFile)) break;
-        if (!WritePrivateProfileString(DEF_APP_NAME, DEF_CONF_PASSWORD, m_data.csPassword, m_csIniFile)) break;
-        CUtils::ConvertFullToRelativePath(m_data.csLogFile, m_csConfigDir);
-        if (!WritePrivateProfileString(DEF_APP_NAME, DEF_CONF_LOGFILE, m_data.csLogFile, m_csIniFile)) break;
+        if (!CONF_SAVE_INT(m_data.bPreventDNSLeaks, DEF_CONF_PREVENTDNSLEAKS)) break;
+        if (!CONF_SAVE_STRING(CUtils::ConvertFullToRelativePath(m_data.csProfilesDir, m_csConfigDir), DEF_CONF_PROFILES)) break;
+        if (!CONF_SAVE_INT(m_data.uiPort, DEF_CONF_PORT)) break;
+        if (!CONF_SAVE_STRING(m_data.csPassword, DEF_CONF_PASSWORD)) break;
+        if (!CONF_SAVE_INT(m_data.uiBytecountInterval, DEF_CONF_BYTECOUNT_INTERVAL)) break;
+        if (!CONF_SAVE_STRING(CUtils::ConvertFullToRelativePath(m_data.csLogFile, m_csConfigDir), DEF_CONF_LOGFILE)) break;
 
         bRet = TRUE;
     } while (0);
@@ -183,6 +180,14 @@ BOOL CConfiguration::Save()
     Unlock();
 
     return bRet;
+}
+
+BOOL CConfiguration::LoadRegistryString(CRegKey &key, LPCTSTR szValue, CString &csDest, ULONG ulMaxLength)
+{
+    ULONG ulSize = ulMaxLength;
+    LSTATUS ret = key.QueryStringValue(szValue, csDest.GetBuffer(ulSize), &ulSize);
+    csDest.ReleaseBuffer();
+    return ret == ERROR_SUCCESS;
 }
 
 BOOL CConfiguration::AddProfile(LPCTSTR szConfPath)
@@ -232,7 +237,7 @@ BOOL CConfiguration::GetProfile(UINT uIndex, VPN_PROFILE_T &profile)
 
 UINT CConfiguration::ReloadProfiles()
 {
-    UINT uiCount               = 0;
+    UINT uiCount                = 0;
     WIN32_FIND_DATA findData    = {0};
     HANDLE hFind                = INVALID_HANDLE_VALUE;
     PTSTR szExtension           = NULL;
@@ -245,7 +250,7 @@ UINT CConfiguration::ReloadProfiles()
         RemoveAllProfiles();
         m_profiles.SetCount(DEF_MAX_PROFILES);
 
-        _stprintf_s(szFind, sizeof(szFind), _T("%s\\*.%s"), m_data.csProfilesDir, m_dataOpenVPN.csConfigExt);
+        _stprintf_s(szFind, _countof(szFind), _T("%s\\*.%s"), m_data.csProfilesDir, m_dataOpenVPN.csConfigExt);
         hFind = FindFirstFile(szFind, &findData);
         if (hFind == INVALID_HANDLE_VALUE) break;
 
@@ -257,8 +262,7 @@ UINT CConfiguration::ReloadProfiles()
             szExtension = _tcsrchr(findData.cFileName, _T('.'));
             if (szExtension) *szExtension = '\0';
             pProfile->csName = findData.cFileName;
-            m_profiles.Add(pProfile);
-            uiCount++;
+            m_profiles[uiCount++] = pProfile;
         } while (FindNextFile(hFind, &findData) && uiCount < DEF_MAX_PROFILES);
 
         FindClose(hFind);

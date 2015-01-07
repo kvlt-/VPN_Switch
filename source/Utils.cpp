@@ -98,24 +98,26 @@ HANDLE CUtils::GetUniqueGlobalMutex(LPCTSTR szMutexName)
     return hMutex;
 }
 
-void CUtils::ConvertRelativeToFullPath(CString &csPath, CString &csBaseDir)
+CString CUtils::ConvertRelativeToFullPath(CString &csPath, CString &csBaseDir, BOOL bOverwrite)
 {
-    if (csPath.GetLength() > 2 && csPath.GetAt(1) == _T(':')) return;
+    if (csPath.GetLength() > 2 && csPath.GetAt(1) == _T(':')) return csPath;
 
-    TCHAR szBuffer[MAX_PATH];
-    _stprintf_s(szBuffer, _countof(szBuffer), _T("%s\\%s"), csBaseDir, csPath);
+    CString csFullPath;
+    csFullPath.Format(_T("%s\\%s"), csBaseDir, csPath);
 
-    csPath = szBuffer;
+    if (bOverwrite) csPath = csFullPath;
+    return csFullPath;
 }
 
-void CUtils::ConvertFullToRelativePath(CString &csPath, CString &csBaseDir)
+CString CUtils::ConvertFullToRelativePath(CString &csPath, CString &csBaseDir, BOOL bOverwrite)
 {
-    if (_tcsnicmp(csPath, csBaseDir, csBaseDir.GetLength()) != 0) return;
+    if (_tcsnicmp(csPath, csBaseDir, csBaseDir.GetLength()) != 0) return csPath;
 
-    LPTSTR szBuffer = csPath.GetBuffer() + csBaseDir.GetLength();
-    if (*szBuffer == _T('\\')) szBuffer++;
+    LPTSTR szRelative = csPath.GetBuffer() + csBaseDir.GetLength();
+    if (*szRelative == _T('\\')) szRelative++;
 
-    csPath = szBuffer;
+    if (bOverwrite) csPath = szRelative;
+    return CString(szRelative);
 }
 
 void CUtils::FormatTimeElapsed(ULONGLONG ullTime, LPTSTR szDest, DWORD dwDestSize)

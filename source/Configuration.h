@@ -27,7 +27,7 @@ public:
     BOOL AddProfile(LPCTSTR szConfPath);
     BOOL RemoveProfile(UINT uiIndex);
     BOOL GetProfile(UINT uiIndex, VPN_PROFILE_T &profile);
-    DECLARE_GETTER_VAL(size_t, GetProfilesCount, m_profiles.GetCount());
+    DECLARE_GETTER_VAL(UINT, GetProfilesCount, m_profiles.GetCount());
     UINT ReloadProfiles();
     void RemoveAllProfiles();
 
@@ -64,8 +64,6 @@ public:
 
 
 protected:
-    typedef CAtlArray<VPN_PROFILE_T *> VPN_PROFILE_ARRAY_T;
-
     typedef struct _DATA_OPENVPN_T
     {
         CString csPath;
@@ -77,9 +75,9 @@ protected:
     } DATA_OPENVPN_T;
 
 protected:
-
+    CWinApp *m_app;
     BOOL m_bLoaded;
-    CString m_csIniFile;
+    CString m_csConfFile;
     CRITICAL_SECTION m_crs;
 
     // getters only for these
@@ -91,7 +89,7 @@ protected:
     // getters/setters for these (locked by m_crsMain)
 
     BOOL m_bLocked;
-    VPN_PROFILE_ARRAY_T m_profiles;
+    CAtlArray<VPN_PROFILE_T *> m_profiles;
     DATA_T m_data;
 
 protected:
@@ -99,7 +97,6 @@ protected:
     BOOL LoadMain();
 
     BOOL LoadRegistryString(CRegKey &key, LPCTSTR szValue, CString &csDest, ULONG ulwMaxLength);
-    BOOL LoadConfString();
 
     void Lock()     { EnterCriticalSection(&m_crs); }
     void Unlock()   { LeaveCriticalSection(&m_crs); }

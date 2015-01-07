@@ -1,15 +1,16 @@
 
 #pragma once
 
-#define USE_CONFIG_DIR          // use %APPDATA%\DEF_COMPANY_NAME dir for config, instead of exe dir
-
 #define DEF_APP_NAME            _T("VPN_Switch")
 #define DEF_COMPANY_NAME        _T("kvlt")
-#define DEF_UNIQUE_MUTEX_NAME   DEF_APP_NAME _T("_mtx")
+
+#define USE_CONFIG_DIR          // use DEF_CONF_DIR for config, instead of exe dir
+#define DEF_CONF_DIR            _T("%APPDATA%\\") DEF_COMPANY_NAME
 
 #define DEF_MAX_PROFILES        64              // max loaded OpenVPN profiles
 #define DEF_OPENVPN_TIMEOUT     10              // max timeout of OpenVPN operations [s]
 
+#define DEF_UNIQUE_MUTEX_NAME   DEF_APP_NAME _T("_mtx")
 
 // TODO: log window
 
