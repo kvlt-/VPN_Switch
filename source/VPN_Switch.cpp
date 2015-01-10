@@ -13,8 +13,6 @@ CVPN_SwitchApp theApp;      // global app object
 
 CVPN_SwitchApp::CVPN_SwitchApp()
 {
-    // support Restart Manager
-    m_dwRestartManagerSupportFlags = AFX_RESTART_MANAGER_SUPPORT_RESTART;
     m_hUniqueMutex = NULL;
 }
 
@@ -34,7 +32,7 @@ BOOL CVPN_SwitchApp::InitInstance()
     if (!m_hUniqueMutex) return FALSE;
 
     // init winsock
-	if (!AfxSocketInit()) return FALSE;
+    if (!AfxSocketInit()) return FALSE;
 
 	// Create the shell manager, in case the dialog contains
 	// any shell tree view or shell list view controls.
@@ -45,6 +43,7 @@ BOOL CVPN_SwitchApp::InitInstance()
 
     // Run main loop
     CMainWnd MainWindow;
+    m_pMainWnd = &MainWindow;
     MainWindow.Run();
     
 	// Delete the shell manager created above.
@@ -55,9 +54,7 @@ BOOL CVPN_SwitchApp::InitInstance()
 
 int CVPN_SwitchApp::ExitInstance()
 {
-    CWinApp::ExitInstance();
-
     CLOSEHANDLE(m_hUniqueMutex);
 
-    return 0;
+    return CWinApp::ExitInstance();
 }

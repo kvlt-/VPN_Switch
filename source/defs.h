@@ -4,8 +4,8 @@
 #define DEF_APP_NAME            _T("VPN_Switch")
 #define DEF_COMPANY_NAME        _T("kvlt")
 
-#define USE_CONFIG_DIR          // use DEF_CONF_DIR for config, instead of exe dir
-#define DEF_CONF_DIR            _T("%APPDATA%\\") DEF_COMPANY_NAME
+#define USE_CONFIG_DIR          // use DEF_CONFIG_DIR for config, instead of exe dir
+#define DEF_CONFIG_DIR          _T("%APPDATA%\\") DEF_COMPANY_NAME
 
 #define DEF_MAX_PROFILES        64              // max loaded OpenVPN profiles
 #define DEF_OPENVPN_TIMEOUT     10              // max timeout of OpenVPN operations [s]
@@ -15,6 +15,7 @@
 // TODO: log window
 
 // custom window events
+
 #define WM_TRAY_EVENT           (WM_USER+1)     // tray icon mouse clicked/hovered
 #define WM_STATUS_EVENT         (WM_USER+2)     // connection status has been changed
 #define WM_BYTECOUNT_EVENT      (WM_USER+3)     // connection traffic data have been updated

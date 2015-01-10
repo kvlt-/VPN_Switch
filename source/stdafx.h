@@ -14,17 +14,9 @@
 #include "targetver.h"          // target OS version
 
 #include <afxwin.h>             // MFC core and standard components
-#include <afxext.h>             // MFC extensions
-#ifndef _AFX_NO_OLE_SUPPORT
-#include <afxdtctl.h>           // MFC support for Internet Explorer 4 Common Controls
-#endif
-#ifndef _AFX_NO_AFXCMN_SUPPORT
+#include <afxsock.h>            // MFC Winsock extension
 #include <afxcmn.h>             // MFC support for Windows Common Controls
-#endif
-#include <afxdisp.h>        // MFC Automation classes
 #include <afxcontrolbars.h>     // MFC support for ribbons and control bars
-#include <afxsock.h>            // MFC socket extensions
-#include <afxdialogex.h>
 
 #include <atlcoll.h>            // ATL collection classes
 
