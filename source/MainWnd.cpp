@@ -22,7 +22,7 @@ CMainWnd::CMainWnd() : CWnd()
     m_pdlgChild             = NULL;
     m_bProcessing           = FALSE;
 
-    CreateEx(0, ::AfxRegisterWndClass(NULL), _T("VPN_Switch_Window"), 0, 0, 0, 0, 0, HWND_MESSAGE, NULL);
+    CreateEx(0, ::AfxRegisterWndClass(NULL), NULL, 0, 0, 0, 0, 0, NULL, NULL);
 }
 
 CMainWnd::~CMainWnd()
@@ -38,6 +38,7 @@ BEGIN_MESSAGE_MAP(CMainWnd, CWnd)
     ON_MESSAGE(WM_BYTECOUNT_EVENT, OnByteCountEvent)
     ON_WM_QUERYENDSESSION()
     ON_WM_ENDSESSION()
+    ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 BOOL CMainWnd::Run()
@@ -120,7 +121,7 @@ void CMainWnd::StopProcessing()
         m_pController->StopAsync();
     }
     else {
-        EndModalLoop(0);
+        PostQuitMessage(0);
     }
 }
 
@@ -219,7 +220,7 @@ LRESULT CMainWnd::OnStatusEvent(WPARAM wParam, LPARAM lParam)
         break;
     case VPN_ST_EXITED:
         m_pController->WaitForStop();
-        EndModalLoop(0);
+        PostQuitMessage(0);
         break;
     default:
         break;
@@ -242,6 +243,11 @@ BOOL CMainWnd::OnQueryEndSession()
 }
 
 void CMainWnd::OnEndSession(BOOL bEnding)
+{
+    StopProcessing();
+}
+
+void CMainWnd::OnClose()
 {
     StopProcessing();
 }
