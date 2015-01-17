@@ -85,12 +85,14 @@ BOOL CController::Start()
     return bRet;
 }
 
-void CController::Stop(BOOL bWait)
+void CController::Stop(BOOL bExiting)
 {
     if (m_hStopEvent) SetEvent(m_hStopEvent);
-    if (bWait) {
+    if (bExiting) {
         if (m_hThread) {
-            WaitForSingleObject(m_hThread, INFINITE);
+            if (WaitForSingleObject(m_hThread, DEF_SHUTDOWN_TIMEOUT * 1000) == WAIT_TIMEOUT) {
+                TerminateThread(m_hThread, 0);
+            }
             CLOSEHANDLE(m_hThread);
         }
         Shutdown();
@@ -344,9 +346,9 @@ void CController::DisconnectOpenVPN()
 {
     if (GetStatus() == VPN_ST_CONNECTED) SetStatus(VPN_ST_DISCONNECTING);
 
+    if (m_pConfig->GetPreventDNSLeaks()) m_DNSLeaks.Prevent(FALSE);
     StopOpenVPNProcess();   // attempt graceful exit via global event
     if (m_pManagementSession) m_pManagementSession->Stop(); // possible SIGTERM close
-    if (m_pConfig->GetPreventDNSLeaks()) m_DNSLeaks.Prevent(FALSE);
 }
 
 BOOL CController::StartOpenVPNProcess()

@@ -8,8 +8,10 @@
 
 #include "VPN_Switch.h"
 
-CVPN_SwitchApp theApp;      // global app object
+#define DEF_UNIQUE_MUTEX_NAME   DEF_APP_NAME _T("_mtx")
 
+
+CVPN_SwitchApp theApp;      // global app object
 
 CVPN_SwitchApp::CVPN_SwitchApp()
 {

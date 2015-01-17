@@ -22,7 +22,7 @@ public:
     ~CController();
 
     BOOL Start();
-    void Stop(BOOL bWait);
+    void Stop(BOOL bExiting);
     void WaitForStop();
 
     VPN_STATUS GetStatus(PUINT puiErrorID = NULL);

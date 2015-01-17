@@ -9,8 +9,7 @@
 
 #define DEF_MAX_PROFILES        64              // max loaded OpenVPN profiles
 #define DEF_OPENVPN_TIMEOUT     10              // max timeout of OpenVPN operations [s]
-
-#define DEF_UNIQUE_MUTEX_NAME   DEF_APP_NAME _T("_mtx")
+#define DEF_SHUTDOWN_TIMEOUT    4               // max timeout on app shutdown [s]
 
 // TODO: log window
 
