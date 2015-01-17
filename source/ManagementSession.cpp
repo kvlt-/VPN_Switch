@@ -97,11 +97,12 @@ BOOL CManagementSession::Start(CManagementSession::ARGS_T &args)
         m_hThread = CreateThread(NULL, 0, ThreadProc, this, 0, NULL);
         bRet = m_hThread != NULL;
     }
-    if (!bRet) {
+    if (bRet) {
+        SetCommand(VPN_CMD_CONNECT);
+    }
+    else {
         Shutdown();
     }
-
-    if (bRet) SetCommand(VPN_CMD_CONNECT);
 
     return bRet;
 }

@@ -237,6 +237,7 @@ void CMainWnd::DisplayTrayProfiles()
    
     switch (status) {
     case VPN_ST_CONNECTED:
+    case VPN_ST_CONNECTING:
         m_pController->SetCommand(VPN_CMD_DISCONNECT);
         break;
     case VPN_ST_ERROR:
