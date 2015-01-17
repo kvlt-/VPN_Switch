@@ -85,19 +85,16 @@ BOOL CController::Start()
     return bRet;
 }
 
-void CController::Stop()
-{
-    if (m_hThread) {
-        if (m_hStopEvent) SetEvent(m_hStopEvent);
-        WaitForSingleObject(m_hThread, INFINITE);
-        CLOSEHANDLE(m_hThread);
-    }
-    Shutdown();
-}
-
-void CController::StopAsync()
+void CController::Stop(BOOL bWait)
 {
     if (m_hStopEvent) SetEvent(m_hStopEvent);
+    if (bWait) {
+        if (m_hThread) {
+            WaitForSingleObject(m_hThread, INFINITE);
+            CLOSEHANDLE(m_hThread);
+        }
+        Shutdown();
+    }
 }
 
 void CController::WaitForStop()

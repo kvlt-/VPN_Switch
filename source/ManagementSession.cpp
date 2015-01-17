@@ -97,7 +97,7 @@ BOOL CManagementSession::Start(CManagementSession::ARGS_T &args)
         m_hThread = CreateThread(NULL, 0, ThreadProc, this, 0, NULL);
         bRet = m_hThread != NULL;
     }
-    else {
+    if (!bRet) {
         Shutdown();
     }
 

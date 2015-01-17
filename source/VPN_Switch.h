@@ -26,6 +26,8 @@ public:
 
 protected:
     HANDLE m_hUniqueMutex;
+    CShellManager *m_pShellManager;
+
 };
 
 extern CVPN_SwitchApp theApp;

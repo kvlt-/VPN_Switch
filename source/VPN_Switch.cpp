@@ -31,30 +31,34 @@ BOOL CVPN_SwitchApp::InitInstance()
     m_hUniqueMutex = CUtils::GetUniqueGlobalMutex(DEF_UNIQUE_MUTEX_NAME);
     if (!m_hUniqueMutex) return FALSE;
 
+    // Create the shell manager, in case the dialog contains
+    // any shell tree view or shell list view controls.
+    m_pShellManager = new CShellManager;
+    if (!m_pShellManager) return FALSE;
+
     // init winsock
     if (!AfxSocketInit()) return FALSE;
-
-	// Create the shell manager, in case the dialog contains
-	// any shell tree view or shell list view controls.
-	CShellManager *pShellManager = new CShellManager;
 
 	// Activate "Windows Native" visual manager for enabling themes in MFC controls
 	CMFCVisualManager::SetDefaultManager(RUNTIME_CLASS(CMFCVisualManagerWindows));
 
-    // Run main loop
-    CMainWnd MainWindow;
-    m_pMainWnd = &MainWindow;
-    MainWindow.Run();
+    // Create window
+    CMainWnd *pMainWindow = new CMainWnd;
+    if (!pMainWindow || !pMainWindow->Create()) return FALSE;
+    m_pMainWnd = pMainWindow;
     
-	// Delete the shell manager created above.
-    if (pShellManager != NULL) delete pShellManager;
+    // frame window attempt
+    //pMainWindow->LoadFrame(IDR_TRAY_MENU);
+    //m_nCmdShow = SW_HIDE;
+    //pMainWindow->InitialUpdateFrame(NULL, TRUE);
 
-	return FALSE;
+	return TRUE;
 }
 
 int CVPN_SwitchApp::ExitInstance()
 {
     CLOSEHANDLE(m_hUniqueMutex);
+    DESTRUCT(m_pShellManager);
 
     return CWinApp::ExitInstance();
 }

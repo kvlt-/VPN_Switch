@@ -6,8 +6,9 @@
 
 CTrayNotifier::CTrayNotifier()
 {
-    m_hTrayWnd = NULL;
+    m_hMainWnd = NULL;
     m_uiTrayMessageID = 0;
+    ZeroMemory(&m_trayData, sizeof(m_trayData));
     m_hThread = NULL;
     m_hStopEvent = NULL;
     m_hTrackStartEvent = NULL;
@@ -22,15 +23,30 @@ CTrayNotifier::~CTrayNotifier()
     DeleteCriticalSection(&m_crsTrack);
 }
 
-BOOL CTrayNotifier::Init(HWND hTrayWnd, UINT uiTrayMessageID)
+BOOL CTrayNotifier::Init(HWND hMainWnd, UINT uiTrayMessageID)
 {
     BOOL bRet = FALSE;
 
     do {
-        if (!hTrayWnd || !uiTrayMessageID) break;
+        if (!hMainWnd || !uiTrayMessageID) break;
 
-        m_hTrayWnd = hTrayWnd;
+        m_hMainWnd = hMainWnd;
         m_uiTrayMessageID = uiTrayMessageID;
+
+        m_trayData.cbSize = sizeof(NOTIFYICONDATA);
+        m_trayData.hWnd = hMainWnd;
+        m_trayData.uID = 0;
+        m_trayData.uVersion = NOTIFYICON_VERSION_4;
+        m_trayData.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+        m_trayData.uCallbackMessage = WM_TRAY_EVENT;
+        m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_DARK));
+        _tcscpy_s(m_trayData.szTip, _countof(m_trayData.szTip), DEF_APP_NAME);
+
+        if (!Shell_NotifyIcon(NIM_ADD, &m_trayData)) {
+            ZeroMemory(&m_trayData, sizeof(m_trayData));
+            break;
+        }
+
         m_bTracking = FALSE;
 
         m_hStopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -58,6 +74,10 @@ void CTrayNotifier::Shutdown()
     CLOSEHANDLE(m_hThread);
     CLOSEHANDLE(m_hStopEvent);
     CLOSEHANDLE(m_hTrackStartEvent);
+    if (m_trayData.cbSize) {
+        Shell_NotifyIcon(NIM_DELETE, &m_trayData);
+        ZeroMemory(&m_trayData, sizeof(m_trayData));
+    }
 }
 
 BOOL CTrayNotifier::TrackMouse()
@@ -76,6 +96,61 @@ BOOL CTrayNotifier::TrackMouse()
     return bTracked;
 }
 
+
+void CTrayNotifier::Notify(VPN_STATUS status, LPCTSTR szText)
+{
+    if (!m_trayData.cbSize) return;
+
+    CString csTitle;
+
+    m_trayData.uFlags       = NIF_INFO | NIF_ICON | NIF_TIP;
+    m_trayData.dwInfoFlags  = NIIF_NOSOUND | NIIF_INFO;
+
+    switch (status)
+    {
+    case VPN_ST_CONNECTED:
+        m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_GREEN));
+        csTitle.LoadString(IDS_INFO_CONNECTED);
+        break;
+    case VPN_ST_DISCONNECTED:
+        m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_DARK));
+        csTitle.LoadString(IDS_INFO_DISCONNECTED);
+        break;
+    case VPN_ST_CONNECTING:
+        m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_ORANGE));
+        csTitle.LoadString(IDS_INFO_CONNECTING);
+        break;
+    case VPN_ST_DISCONNECTING:
+        m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_ORANGE));
+        csTitle.LoadString(IDS_INFO_DISCONNECTING);
+        break;
+    case VPN_ST_ERROR:
+        m_trayData.dwInfoFlags = NIIF_NOSOUND | NIIF_ERROR;
+        m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_DARK));
+        csTitle.LoadString(IDS_STR_ERROR);
+        break;
+    default:
+        break;
+    }
+
+    _tcscpy_s(m_trayData.szInfoTitle, _countof(m_trayData.szInfoTitle), csTitle);
+    _tcscpy_s(m_trayData.szInfo, _countof(m_trayData.szInfo), szText);
+    _stprintf_s(m_trayData.szTip, _countof(m_trayData.szTip), _T("%s\r\n%s"), DEF_APP_NAME, csTitle);
+
+    Shell_NotifyIcon(NIM_MODIFY, &m_trayData);
+}
+
+void CTrayNotifier::ChangeTip(LPCTSTR szTip)
+{
+    if (!m_trayData.cbSize) return;
+
+    m_trayData.uFlags = NIF_TIP;
+    _tcscpy_s(m_trayData.szTip, _countof(m_trayData.szTip), szTip);
+
+    Shell_NotifyIcon(NIM_MODIFY, &m_trayData);
+}
+
+
 DWORD CTrayNotifier::ThreadMain()
 {
     BOOL bStop = FALSE;
@@ -90,7 +165,7 @@ DWORD CTrayNotifier::ThreadMain()
             break;
         case WAIT_TIMEOUT:
             if (CheckMouseLeave()) {
-                ::PostMessage(m_hTrayWnd, m_uiTrayMessageID, 0, WM_MOUSELAST);
+                ::PostMessage(m_hMainWnd, m_uiTrayMessageID, 0, WM_MOUSELAST);
                 dwTimeout = INFINITE;
             }
             break;

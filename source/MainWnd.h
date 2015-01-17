@@ -12,10 +12,9 @@ public:
     CMainWnd();
     virtual ~CMainWnd();
 
-    BOOL Run();
+    BOOL Create();
 
 protected:
-    NOTIFYICONDATA m_TrayData;
     HMENU m_hTrayMenu;
     HMENU m_hTrayProfilesMenu;
     CDialog *m_pdlgChild;
@@ -23,25 +22,24 @@ protected:
 
     CConfiguration *m_pConfig;
     CController *m_pController;
-    CTrayNotifier m_TrayNotifier;
+    CTrayNotifier m_trayNotifier;
 
 protected:
-    BOOL Init();
-    void Shutdown();
-
-    BOOL StartProcessing();
-    void StopProcessing();
+    BOOL StartProcessing();             // called on first connect request
+    void StopProcessing(BOOL bWait);    // called on exit request
 
     void ConnectToProfile(UINT uiProfile);
-
-    void NotifyTray(VPN_STATUS status, UINT uiStringID = 0);
-    void ChangeTrayTip(LPCTSTR szTip);
-    void ChangeTrayTipStats();
-
     void DisplayTrayProfiles();
     void DisplayTrayProfilesMenu();
     void DisplayTrayMenu();
     void DisplayChildDialog(CDialog *pDlg);
+
+    CString ConstructNotifyText(VPN_STATUS status, UINT uiStringID = 0);
+    CString ConstructTrafficStatsTip();
+
+protected:
+    DECLARE_DYNAMIC(CMainWnd);
+    DECLARE_MESSAGE_MAP();
 
     afx_msg void OnTrayCommand(UINT uiCommandID);
     afx_msg void OnTrayProfileSelected(UINT uiProfileID);
@@ -49,11 +47,10 @@ protected:
     afx_msg LRESULT OnStatusEvent(WPARAM, LPARAM);
     afx_msg LRESULT OnByteCountEvent(WPARAM, LPARAM);
 
-    afx_msg BOOL OnQueryEndSession();
+    afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+    afx_msg void OnDestroy();
     afx_msg void OnEndSession(BOOL bEnding);
     afx_msg void OnClose();
-
-    DECLARE_MESSAGE_MAP();
 
 private:
 
