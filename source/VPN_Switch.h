@@ -1,18 +1,8 @@
 
-// VPN_Switch.h : main header file for the PROJECT_NAME application
-//
-
 #pragma once
 
-#ifndef __AFXWIN_H__
-	#error "include 'stdafx.h' before including this file for PCH"
-#endif
+#include "MainWnd.h"
 
-
-
-// CVPN_SwitchApp:
-// See VPN_Switch.cpp for the implementation of this class
-//
 
 class CVPN_SwitchApp : public CWinApp
 {
@@ -27,7 +17,6 @@ public:
 protected:
     HANDLE m_hUniqueMutex;
     CShellManager *m_pShellManager;
+    CMainWnd *m_pWnd;
 
 };
-
-extern CVPN_SwitchApp theApp;
