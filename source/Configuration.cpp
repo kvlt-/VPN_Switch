@@ -124,7 +124,7 @@ BOOL CConfiguration::LoadMain()
         }
         m_csBinDir.ReleaseBuffer();
 
-#ifdef USE_CONFIG_DIR
+#if USE_CONFIG_DIR
         if (!ExpandEnvironmentStrings(DEF_CONFIG_DIR, m_csConfigDir.GetBuffer(MAX_PATH), MAX_PATH)) break;
         m_csConfigDir.ReleaseBuffer();
 #else

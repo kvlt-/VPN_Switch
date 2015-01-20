@@ -1,9 +1,10 @@
 
 #include "stdafx.h"
+#include "resource.h"
 #include "Utils.h"
 #include "Controller.h"
 
-#define DEF_OPENVPN_EVENT_NAME  _T("VPN_Switch_ExitEvent")
+#define DEF_OPENVPN_EVENT_NAME  DEF_APP_NAME _T("_ExitEvent")
 
 
 CController::CController(CConfiguration *pConfig, HWND hMainWnd)
@@ -174,7 +175,10 @@ VPN_STATUS CController::GetStatus(PUINT puiErrorID)
 
     m_state.Lock();
     status = m_state.status;
-    if (puiErrorID) *puiErrorID = m_state.uiErrorID;
+    if (puiErrorID) {
+        *puiErrorID = m_state.uiErrorID;
+        m_state.uiErrorID = 0;
+    }
     m_state.Unlock();
 
     return status;
@@ -184,7 +188,9 @@ void CController::SetStatus(VPN_STATUS status, UINT uiErrorID)
 {
     m_state.Lock();
     m_state.status = status;
-    if (uiErrorID) m_state.uiErrorID = uiErrorID;
+    if (status == VPN_ST_ERROR) {
+        if (uiErrorID) m_state.uiErrorID = uiErrorID;
+    }
     m_state.Unlock();
 
     if (m_hMainWnd) ::PostMessage(m_hMainWnd, WM_STATUS_EVENT, NULL, NULL);
@@ -211,6 +217,7 @@ void CController::GetActiveProfileConfPath(CString &csConfPath)
     m_state.Unlock();
 
 }
+
 void CController::GetExternalIP(CString &csExternalIP)
 {
     if (m_pManagementSession) m_pManagementSession->GetExternalIP(csExternalIP);
@@ -281,26 +288,27 @@ void CController::UpdateStatus()
     VPN_STATUS status = m_pManagementSession->GetStatus();
 
     if (status == VPN_ST_ERROR) {
-        SetStatus(status, IDS_ERR_OPENVPN_COMM_FAILED);
+        SetStatus(status, IDS_ERR_OPENVPN);
         DisconnectOpenVPN();
     }
     else {
-        VPN_STATUS prevStatus = GetStatus();
-
         if (status == VPN_ST_CONNECTED) {
-            SetStatus(status);
-            if (m_pConfig->GetPreventDNSLeaks()) m_DNSLeaks.Prevent(TRUE);
+            if (m_pConfig->GetPreventDNSLeaks()) {
+                m_DNSLeaks.Prevent(TRUE);
+            }
         }
         else {
+            VPN_STATUS prevStatus = GetStatus();
             if (prevStatus == VPN_ST_CONNECTED) {
-                if (m_pConfig->GetPreventDNSLeaks()) m_DNSLeaks.Prevent(FALSE);
+                if (m_pConfig->GetPreventDNSLeaks()) {
+                    m_DNSLeaks.Prevent(FALSE);
+                }
             }
-            if (prevStatus != VPN_ST_ERROR || status != VPN_ST_DISCONNECTED) {
-                SetStatus(status);
-            }
+            else if (status == VPN_ST_DISCONNECTED && prevStatus == VPN_ST_ERROR)
+                return;
         }
+        SetStatus(status);
     }
-
 }
 
 void CController::UpdateTrafficData()

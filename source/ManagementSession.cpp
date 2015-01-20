@@ -5,7 +5,7 @@
 #include "ManagementSession.h"
 
 
-#define COMM_BUFFER_SIZE    2048
+#define COMM_BUFFER_SIZE    4096
 
 #define CMD_BYTECOUNT       "bytecount %u"
 #define CMD_HOLD_OFF        "hold off"
@@ -97,10 +97,7 @@ BOOL CManagementSession::Start(CManagementSession::ARGS_T &args)
         m_hThread = CreateThread(NULL, 0, ThreadProc, this, 0, NULL);
         bRet = m_hThread != NULL;
     }
-    if (bRet) {
-        SetCommand(VPN_CMD_CONNECT);
-    }
-    else {
+    if (!bRet) {
         Shutdown();
     }
 
@@ -172,10 +169,8 @@ VPN_STATUS CManagementSession::GetStatus()
     return status;
 }
 
-
 DWORD CManagementSession::Main()
 {
-    DWORD dwExitCode        = 0;
     int iResult             = 0;
     DWORD dwFlags           = 0;
     DWORD dwBytesSent       = 0;
@@ -195,13 +190,7 @@ DWORD CManagementSession::Main()
 
         sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
         if (sock == INVALID_SOCKET) {
-            dwExitCode = 1;
-            break;
-        }
-
-        WaitForSingleObject(m_hCommandEvent, DEF_OPENVPN_TIMEOUT * 1000);
-        if (GetCommand() != VPN_CMD_CONNECT) {
-            dwExitCode = 1;
+            InsertDataStatus(VPN_ST_ERROR, "Failed to create socket.");
             break;
         }
 
@@ -210,7 +199,7 @@ DWORD CManagementSession::Main()
         InetPton(AF_INET, _T("127.0.0.1"), &saOpenVPN.sin_addr);
 
         if (WSAConnect(sock, (sockaddr *)&saOpenVPN, sizeof(sockaddr_in), NULL, NULL, NULL, NULL) != 0) {
-            dwExitCode = 1;
+            InsertDataStatus(VPN_ST_ERROR, "Failed to connect to OpenVPN socket.");
             break;
         }
 
@@ -252,7 +241,7 @@ DWORD CManagementSession::Main()
                 bStop = TRUE;
                 break;
             default:
-                dwExitCode = 1;
+                InsertDataStatus(VPN_ST_ERROR, "Unknown fatal error!");
                 bStop = TRUE;
                 break;
             }
@@ -263,20 +252,16 @@ DWORD CManagementSession::Main()
 
     if (sock != INVALID_SOCKET) closesocket(sock);
     
-    if (dwExitCode > 0) InsertDataStatus(VPN_ST_ERROR); 
-    else if (m_phase == PHASE_SHUTDOWN) InsertDataStatus(VPN_ST_DISCONNECTED);
+    if (m_phase == PHASE_SHUTDOWN) InsertDataStatus(VPN_ST_DISCONNECTED);
 
     CLOSEHANDLE(wsaRecvOverlapped.hEvent);
 
-    return dwExitCode;
+    return 0;
 }
 
 void CManagementSession::HandleCommand()
 {
     switch (GetCommand()) {
-    case VPN_CMD_CONNECT:
-        // handled in  main
-        break;
     case VPN_CMD_DISCONNECT:
         m_phase = PHASE_SHUTDOWN;
         QueueSendMessage(CMD_SIGNAL_SIGTERM);
@@ -314,6 +299,9 @@ void CManagementSession::HandleReceive(LPSTR buffer, DWORD dwSize)
         szArg = strchr(szMessage, ':');
         if (szArg) {
             *(szArg++) = '\0';
+            while (*szArg == ' ') {
+                if (!*(++szArg)) break;
+            }
         }
 
         index = m_messageHandlers.GetHeadPosition();
@@ -374,12 +362,33 @@ void CManagementSession::MessageHandlerHold(LPSTR szLine)
 
 void CManagementSession::MessageHandlerLog(LPSTR szLine)
 {
-    if (strcmp(szLine, MSG_LOGEND) == 0) {
-        m_phase = PHASE_INIT;
+    if (m_phase == PHASE_LOG) {
+        if (strcmp(szLine, MSG_LOGEND) == 0) {
+            m_phase = PHASE_INIT;
+        }
         return;
     }
 
-    InsertDataLog(szLine);
+    LPSTR szToken       = NULL;
+    LPSTR szContext     = NULL;
+
+    szToken = strtok_s(szLine, ",", &szContext);
+    szToken = strtok_s(szContext, ",", &szContext);
+
+    switch (*szToken) {
+    case 'F':
+    case 'N':
+    case 'W':
+    {
+        szToken = strtok_s(szContext, ",", &szContext);
+        InsertDataStatus(VPN_ST_ERROR, szToken);
+        break;
+    }
+    case 'I':
+    case 'D':
+    default:
+        break;
+    }
 }
 
 void CManagementSession::MessageHandlerState(LPSTR szLine)
@@ -435,8 +444,6 @@ void CManagementSession::MessageHandlerPassword(LPSTR szLine)
 
 void CManagementSession::MessageHandlerSuccess(LPSTR szLine)
 {
-    while (*szLine == ' ') szLine++;
-
     switch (m_phase) {
     case PHASE_AUTH:
         if (strcmp(szLine, ARG_AUTH_OK) == 0) {
@@ -460,16 +467,14 @@ void CManagementSession::MessageHandlerSuccess(LPSTR szLine)
 
 void CManagementSession::MessageHandlerError(LPSTR szLine)
 {
-    while (*szLine == ' ') szLine++;
-
-    InsertDataStatus(VPN_ST_ERROR);
+    InsertDataStatus(VPN_ST_ERROR, szLine);
 }
 
-void CManagementSession::InsertDataStatus(VPN_STATUS status, LPSTR szExternalIP)
+void CManagementSession::InsertDataStatus(VPN_STATUS status, LPSTR szArg)
 {
     m_data.Lock();
     if (status == VPN_ST_CONNECTED) {
-        if (szExternalIP) m_data.csExternalIP = szExternalIP;
+        if (szArg) m_data.csExternalIP = szArg;
         GetSystemTimeAsFileTime(&m_data.ftConnectTime);
     }
     m_data.status = status;

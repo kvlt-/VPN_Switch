@@ -20,8 +20,6 @@
 
 #include <atlcoll.h>            // ATL collection classes
 
-#include "resource.h"		    // main symbols
-
 #include "defs.h"               // global header
 
 #ifdef _DEBUG

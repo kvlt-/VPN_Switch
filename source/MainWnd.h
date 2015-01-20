@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "resource.h"
 #include "Configuration.h"
 #include "Controller.h"
 #include "TrayNotifier.h"

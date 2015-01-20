@@ -71,8 +71,8 @@ protected:
         DWORD dwEvents;
         CManagementSession::BYTECOUNTS_T bytecounts;
         FILETIME ftConnectTime;
-        CString csExternalIP;
         VPN_STATUS status;
+        CString csExternalIP;
 
         _DATA_T() { InitializeCriticalSection(&crs); Reset(); };
         ~_DATA_T() { DeleteCriticalSection(&crs); };
@@ -80,8 +80,8 @@ protected:
             dwEvents = 0;
             ZeroMemory(&bytecounts, sizeof(bytecounts));
             ZeroMemory(&ftConnectTime, sizeof(ftConnectTime));
-            csExternalIP.Empty();
             status = VPN_ST_DISCONNECTED;
+            csExternalIP.Empty();
         }
         void Lock() { EnterCriticalSection(&crs); };
         void Unlock() { LeaveCriticalSection(&crs); };
@@ -128,7 +128,7 @@ protected:
 
     VPN_COMMAND GetCommand();
 
-    void InsertDataStatus(VPN_STATUS status, LPSTR szExternalIP = NULL);
+    void InsertDataStatus(VPN_STATUS status, LPSTR szArg = NULL);
     void InsertDataBytecount(ULONGLONG, ULONGLONG);
     void InsertDataLog(LPSTR szLine);
 

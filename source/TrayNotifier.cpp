@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "resource.h"
 #include "TrayNotifier.h"
 
 #define DEF_TRAY_CHECK_INTERVAL   100   // how often check if mouse left tray icon area [ms]

@@ -31,7 +31,9 @@ CMainWnd::~CMainWnd()
 
 BOOL CMainWnd::Create()
 {
-    return CreateEx(0, ::AfxRegisterWndClass(NULL), NULL, 0, 0, 0, 0, 0, NULL, NULL);
+    LPCTSTR szWndClass = AfxRegisterWndClass(0, NULL, NULL, LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_MAIN)));
+
+    return CreateEx(0, szWndClass, NULL, 0, 0, 0, 0, 0, NULL, NULL);
 }
 
 BOOL CMainWnd::StartProcessing()
@@ -183,7 +185,7 @@ LRESULT CMainWnd::OnStatusEvent(WPARAM wParam, LPARAM lParam)
 {
     UINT uiErrorID;
     VPN_STATUS status = m_pController->GetStatus(&uiErrorID);
-
+    
     switch (status)
     {
     case VPN_ST_CONNECTING:
