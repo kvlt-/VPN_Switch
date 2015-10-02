@@ -82,17 +82,16 @@ BOOL CConfiguration::LoadOpenVPN()
 {
     BOOL bRet = FALSE;
     CRegKey key;
+    CRegKey keyGUI;
 
     do {
-        if (key.Open(HKEY_LOCAL_MACHINE, DEF_REG_OPENVPN_KEY, KEY_READ | KEY_WOW64_64KEY) != ERROR_SUCCESS) {
-            key.Open(HKEY_LOCAL_MACHINE, DEF_REG_OPENVPNGUI_KEY, KEY_READ | KEY_WOW64_64KEY);
-        }
-        if (!key.m_hKey) break;
+        if (key.Open(HKEY_LOCAL_MACHINE, DEF_REG_OPENVPN_KEY, KEY_READ | KEY_WOW64_64KEY) != ERROR_SUCCESS) break;
+        if (keyGUI.Open(HKEY_LOCAL_MACHINE, DEF_REG_OPENVPNGUI_KEY, KEY_READ | KEY_WOW64_64KEY) != ERROR_SUCCESS) break;
 
         if (!LoadRegistryString(key, DEF_REG_OPENVPN_PATH, m_dataOpenVPN.csPath, MAX_PATH)) break;
-        if (!LoadRegistryString(key, DEF_REG_OPENVPN_CONFDIR, m_dataOpenVPN.csConfigDir, MAX_PATH)) break;
-        if (!LoadRegistryString(key, DEF_REG_OPENVPN_CONFEXT, m_dataOpenVPN.csConfigExt, MAX_PATH)) break;
-        if (!LoadRegistryString(key, DEF_REG_OPENVPN_EXEPATH, m_dataOpenVPN.csExePath, MAX_PATH)) break;
+        if (!LoadRegistryString(keyGUI, DEF_REG_OPENVPN_CONFDIR, m_dataOpenVPN.csConfigDir, MAX_PATH)) break;
+        if (!LoadRegistryString(keyGUI, DEF_REG_OPENVPN_CONFEXT, m_dataOpenVPN.csConfigExt, MAX_PATH)) break;
+        if (!LoadRegistryString(keyGUI, DEF_REG_OPENVPN_EXEPATH, m_dataOpenVPN.csExePath, MAX_PATH)) break;
 
         LPTSTR szPath = m_dataOpenVPN.csExePath.GetBuffer();
         LPTSTR szSlash = _tcsrchr(szPath, _T('\\'));
@@ -200,7 +199,7 @@ BOOL CConfiguration::AddProfile(LPCTSTR szConfPath)
         szFileName = _tcsrchr(szConfPath, _T('\\'));
         if (!szFileName) break;
 
-        _stprintf_s(szDestPath, _countof(szDestPath), _T("%s%s"), m_data.csProfilesDir, szFileName);
+        _stprintf_s(szDestPath, _countof(szDestPath), _T("%s%s"), m_data.csProfilesDir.GetBuffer(), szFileName);
 
         bRet = CopyFile(szConfPath, szDestPath, FALSE);
     } while (0);
@@ -250,7 +249,9 @@ UINT CConfiguration::ReloadProfiles()
         RemoveAllProfiles();
         m_profiles.SetCount(DEF_MAX_PROFILES);
 
-        _stprintf_s(szFind, _countof(szFind), _T("%s\\*.%s"), m_data.csProfilesDir, m_dataOpenVPN.csConfigExt);
+        _stprintf_s(szFind, _countof(szFind), _T("%s\\*.%s"),
+            m_data.csProfilesDir.GetBuffer(),
+            m_dataOpenVPN.csConfigExt.GetBuffer());
         hFind = FindFirstFile(szFind, &findData);
         if (hFind == INVALID_HANDLE_VALUE) break;
 

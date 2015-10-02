@@ -62,7 +62,8 @@ void CDlgProfiles::OnBtnAddClicked()
 
     _tcscpy_s(szFilter, _countof(szFilter), _T("OVPN config files"));
     offset = _tcslen(szFilter) + 1;
-    _stprintf_s(szFilter + offset, _countof(szFilter) - offset, _T("*.%s"), m_pConfig->GetOVPNConfigExt());
+    _stprintf_s(szFilter + offset, _countof(szFilter) - offset, _T("*.%s"),
+        m_pConfig->GetOVPNConfigExt().GetBuffer());
     offset += _tcslen(szFilter + offset) + 1;
     szFilter[offset] = _T('\0');
 

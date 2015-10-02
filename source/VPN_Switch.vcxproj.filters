@@ -57,6 +57,9 @@
     <ClInclude Include="TrayNotifier.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DlgAuth.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VPN_Switch.cpp">
@@ -90,6 +93,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TrayNotifier.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgAuth.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

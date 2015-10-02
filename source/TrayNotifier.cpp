@@ -136,7 +136,7 @@ void CTrayNotifier::Notify(VPN_STATUS status, LPCTSTR szText)
 
     _tcscpy_s(m_trayData.szInfoTitle, _countof(m_trayData.szInfoTitle), csTitle);
     _tcscpy_s(m_trayData.szInfo, _countof(m_trayData.szInfo), szText);
-    _stprintf_s(m_trayData.szTip, _countof(m_trayData.szTip), _T("%s\r\n%s"), DEF_APP_NAME, csTitle);
+    _stprintf_s(m_trayData.szTip, _countof(m_trayData.szTip), _T("%s\r\n%s"), DEF_APP_NAME, csTitle.GetBuffer());
 
     Shell_NotifyIcon(NIM_MODIFY, &m_trayData);
 }

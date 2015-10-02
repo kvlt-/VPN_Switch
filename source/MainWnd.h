@@ -47,6 +47,7 @@ protected:
     afx_msg LRESULT OnTrayEvent(WPARAM, LPARAM);
     afx_msg LRESULT OnStatusEvent(WPARAM, LPARAM);
     afx_msg LRESULT OnByteCountEvent(WPARAM, LPARAM);
+    afx_msg LRESULT OnAuthRequestEvent(WPARAM, LPARAM);
 
     afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
     afx_msg void OnDestroy();

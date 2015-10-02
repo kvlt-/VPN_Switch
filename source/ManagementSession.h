@@ -6,7 +6,7 @@ class CManagementSession
 {
 public:
     // session arguments
-    typedef struct _ARGS_T
+    struct ARGS_T
     {
         UINT uiPort;
         UINT uiBytecountInterval;
@@ -16,28 +16,41 @@ public:
 
         BOOL Validate() { return uiPort > 0 && uiBytecountInterval > 0 && !csPasswordA.IsEmpty() && hDataReadyEvent && hSessionReadyEvent; };
         void Reset() { uiPort = 0; uiBytecountInterval = 0 ; csPasswordA.Empty(); hDataReadyEvent = NULL; hSessionReadyEvent = NULL; };
-    } ARGS_T;
+    };
+
+    struct AUTHINFO_T
+    {
+        CStringA csUserA;
+        CStringA csPasswordA;
+    };
 
     // message IDs back to controller (used as flags)
-    typedef enum _EVENT_T
+    enum EVENT_T
     {
-        EVENT_STATUS = 1,
-        EVENT_BYTECOUNT = 2
-    } EVENT_T;
+        EVENT_STATUS    = 1,
+        EVENT_BYTECOUNT = (1 << 1),
+        EVENT_PASSWORD  = (1 << 2)
+    };
 
     // bytecount data
-    typedef struct _BYTECOUNT_T
+    struct BYTECOUNTS_T
     {
-        ULONGLONG ullBytesIn;
-        ULONGLONG ullBytesOut;
-        FILETIME ftTimestamp;
-    } BYTECOUNT_T;
+        UINT uiIndex;       // index for next write
+        struct COUNT_T
+        {
+            ULONGLONG ullBytesIn;
+            ULONGLONG ullBytesOut;
+            FILETIME ftTimestamp;
+        } data[5];          // 5 last bytecounts
+    };
 
-    typedef struct _BYTECOUNTS_T
+    // password request type
+    enum PASSREQUEST_T
     {
-        UINT uiIndex;           // index for next write
-        BYTECOUNT_T data[5];    // 5 last bytecounts
-    } BYTECOUNTS_T;
+        PASSREQ_NONE,
+        PASSREQ_AUTH,
+        PASSREQ_PRIVATEKEY
+    };
 
 public:
     CManagementSession();
@@ -45,13 +58,16 @@ public:
 
     BOOL Start(CManagementSession::ARGS_T &args);
     void Stop(BOOL bForce = FALSE);
+    void SetAuthInfo(AUTHINFO_T &auth);
+    void SetAuthCancel();
 
     void SetCommand(VPN_COMMAND command);
 
     DWORD GetEvents();     // combinations of EVENT_T values
 
-    void GetExternalIP(CString &csExternalIP);
-    void GetByteCounts(BYTECOUNTS_T *pBytecounts, FILETIME *pftConnectTime);
+    CString GetExternalIP();
+    void GetByteCounts(BYTECOUNTS_T &bytecounts, FILETIME & ftConnectTime);
+    PASSREQUEST_T GetPasswordRequestType();
     VPN_STATUS GetStatus();
 
 protected:
@@ -73,6 +89,7 @@ protected:
         FILETIME ftConnectTime;
         VPN_STATUS status;
         CString csExternalIP;
+        PASSREQUEST_T passwordType;
 
         _DATA_T() { InitializeCriticalSection(&crs); Reset(); };
         ~_DATA_T() { DeleteCriticalSection(&crs); };
@@ -82,6 +99,7 @@ protected:
             ZeroMemory(&ftConnectTime, sizeof(ftConnectTime));
             status = VPN_ST_DISCONNECTED;
             csExternalIP.Empty();
+            passwordType = PASSREQ_NONE;
         }
         void Lock() { EnterCriticalSection(&crs); };
         void Unlock() { LeaveCriticalSection(&crs); };
@@ -108,8 +126,10 @@ protected:
     LPSTR m_pSendBuffer;
     HANDLE m_hSendEvent;
 
-    VPN_COMMAND m_command;
     CRITICAL_SECTION m_crsCommand;
+    VPN_COMMAND m_command;
+    BOOL m_bWaitingForAuth;
+    AUTHINFO_T m_auth;
 
     CManagementSession::ARGS_T m_args;
     CManagementSession::DATA_T m_data;
@@ -129,7 +149,8 @@ protected:
     VPN_COMMAND GetCommand();
 
     void InsertDataStatus(VPN_STATUS status, LPSTR szArg = NULL);
-    void InsertDataBytecount(ULONGLONG, ULONGLONG);
+    void InsertDataBytecount(ULONGLONG ullBytesIn, ULONGLONG ullBytesOut);
+    void InsertDataPassword(PASSREQUEST_T authType);
     void InsertDataLog(LPSTR szLine);
 
     void MessageHandlerAuth(LPSTR);

@@ -26,13 +26,15 @@ public:
     void WaitForStop();
 
     VPN_STATUS GetStatus(PUINT puiErrorID = NULL);
-    void GetActiveProfileName(CString &csProfileName);
-    void GetActiveProfileConfPath(CString &csProfileConfPath);
-    void GetExternalIP(CString &csExternalIP);
-    void GetTrafficData(CController::TRAFFIC_DATA_T &data);
+    CString GetActiveProfileName();
+    CString GetActiveProfileConfPath();
+    CString GetExternalIP();
+    CController::TRAFFIC_DATA_T GetTrafficData();
 
     void SetCommand(VPN_COMMAND command);
     void SetActiveProfile(UINT uiProfile);
+    void SetAuthInfo(LPCTSTR szUser, LPCTSTR szPassword);
+    void SetAuthCancel();
 
 protected:
     typedef struct _STATE_T
@@ -90,6 +92,7 @@ protected:
 
     void UpdateStatus();
     void UpdateTrafficData();
+    void RetrieveUserPassword();
 
     BOOL ConnectOpenVPN();
     void DisconnectOpenVPN();

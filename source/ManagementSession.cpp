@@ -13,6 +13,8 @@
 #define CMD_LOG_ON_ALL      "log on all"
 #define CMD_SIGNAL_SIGTERM  "signal SIGTERM"
 #define CMD_STATE_ON        "state on"
+#define CMD_AUTH_USER       "username \"Auth\" %s"
+#define CMD_AUTH_PASSWORD   "password \"Auth\" %s"
 #define CMD_EXIT            "exit"
 
 #define MSG_INIT_AUTH       "ENTER PASSWORD"
@@ -30,6 +32,9 @@
 #define ARG_LOG_OK          "real-time log notification set to ON"
 #define ARG_HOLD_OK         "hold release succeeded"  
 
+#define ARG_PASSREQ_AUTH    "Need \'Auth\' username/password"
+#define ARG_PASSREQ_PKEY    "Need \'Private Key\' password"
+
 #define STATE_CONNECTED     "CONNECTED"
 #define STATE_RECONNECTING  "RECONNECTING"
 #define STATE_EXITING       "EXITING"
@@ -39,6 +44,7 @@ CManagementSession::CManagementSession()
     m_hThread           = NULL;
     m_args.Reset();
 
+    m_pSendBuffer       = NULL;
     m_hSendEvent        = NULL;
     m_hCommandEvent     = NULL;
     m_hStopEvent        = NULL;
@@ -46,6 +52,7 @@ CManagementSession::CManagementSession()
     m_phase             = PHASE_NONE;
 
     m_command           = VPN_CMD_NONE;
+    m_bWaitingForAuth   = FALSE;
     InitializeCriticalSection(&m_crsCommand); 
 }
 
@@ -85,6 +92,7 @@ void CManagementSession::Shutdown()
     CLOSEHANDLE(m_hSendEvent);
     CLOSEHANDLE(m_hCommandEvent);
     CLOSEHANDLE(m_hStopEvent);
+    m_bWaitingForAuth = FALSE;
 
     m_args.Reset();
 }
@@ -123,6 +131,25 @@ void CManagementSession::Stop(BOOL bForce)
     Shutdown();
 }
 
+void CManagementSession::SetAuthInfo(AUTHINFO_T & auth)
+{
+    EnterCriticalSection(&m_crsCommand);
+    m_command = VPN_CMD_AUTHINFO;
+    m_auth = auth;
+    LeaveCriticalSection(&m_crsCommand);
+
+    SetEvent(m_hCommandEvent);
+}
+
+void CManagementSession::SetAuthCancel()
+{
+    EnterCriticalSection(&m_crsCommand);
+    m_command = VPN_CMD_AUTHCANCEL;
+    LeaveCriticalSection(&m_crsCommand);
+
+    SetEvent(m_hCommandEvent);
+}
+
 void CManagementSession::SetCommand(VPN_COMMAND command)
 {
     EnterCriticalSection(&m_crsCommand);
@@ -143,19 +170,30 @@ VPN_COMMAND CManagementSession::GetCommand()
     return command;
 }
 
-void CManagementSession::GetExternalIP(CString &csExternalIP)
+CString CManagementSession::GetExternalIP()
+{
+    CString ret;
+    m_data.Lock();
+    ret = m_data.csExternalIP;
+    m_data.Unlock();
+    return ret;
+}
+
+void CManagementSession::GetByteCounts(BYTECOUNTS_T & bytecounts, FILETIME & ftConnectTime)
 {
     m_data.Lock();
-    csExternalIP = m_data.csExternalIP;
+    CopyMemory(&bytecounts, &m_data.bytecounts, sizeof(BYTECOUNTS_T));
+    CopyMemory(&ftConnectTime, &m_data.ftConnectTime, sizeof(FILETIME));
     m_data.Unlock();
 }
 
-void CManagementSession::GetByteCounts(BYTECOUNTS_T *pBytecounts, FILETIME *pftConnectTime)
+CManagementSession::PASSREQUEST_T CManagementSession::GetPasswordRequestType()
 {
+    PASSREQUEST_T type;
     m_data.Lock();
-    CopyMemory(pBytecounts, &m_data.bytecounts, sizeof(BYTECOUNTS_T));
-    CopyMemory(pftConnectTime, &m_data.ftConnectTime, sizeof(FILETIME));
+    type = m_data.passwordType;
     m_data.Unlock();
+    return type;
 }
 
 VPN_STATUS CManagementSession::GetStatus()
@@ -223,21 +261,21 @@ DWORD CManagementSession::Main()
         do {
             switch (WaitForMultipleObjects(4, hWaitObjects, FALSE, INFINITE))
             {
-            case WAIT_OBJECT_0:
+            case WAIT_OBJECT_0: // m_hSendEvent
                 wsaSendBuffer.len = strlen(m_pSendBuffer);
                 iResult = WSASend(sock, &wsaSendBuffer, 1, &dwBytesSent, 0, NULL, NULL);
                 m_pSendBuffer[0] = '\0';
                 break;
-            case WAIT_OBJECT_0 + 1:
+            case WAIT_OBJECT_0 + 1: // wsaRecvOverlapped.hEvent
                 HandleReceive(pRecvBuffer, sizeof(pRecvBuffer));
                 ZeroMemory(pRecvBuffer, sizeof(pRecvBuffer));
                 iResult = WSARecv(sock, &wsaRecvBuffer, 1, &dwBytesReceived, &dwFlags, &wsaRecvOverlapped, NULL);
                 if (iResult == 0 && dwBytesReceived == 0) bStop = TRUE;
                 break;
-            case WAIT_OBJECT_0 + 2:
+            case WAIT_OBJECT_0 + 2: // m_hCommandEvent
                 HandleCommand();
                 break;
-            case WAIT_OBJECT_0 + 3:
+            case WAIT_OBJECT_0 + 3: // m_hStopEvent
                 bStop = TRUE;
                 break;
             default:
@@ -261,13 +299,36 @@ DWORD CManagementSession::Main()
 
 void CManagementSession::HandleCommand()
 {
-    switch (GetCommand()) {
+    switch (GetCommand())
+    {
+    case VPN_CMD_AUTHCANCEL:
+    {
+        if (!m_bWaitingForAuth) break;
+        m_bWaitingForAuth = FALSE;
+    }
     case VPN_CMD_DISCONNECT:
+    {
         m_phase = PHASE_SHUTDOWN;
         QueueSendMessage(CMD_SIGNAL_SIGTERM);
         QueueSendMessage(CMD_EXIT);
         SetEvent(m_hSendEvent);
         break;
+    }
+    case VPN_CMD_AUTHINFO:
+    {
+        if (m_bWaitingForAuth) {
+            CStringA user, password;
+            EnterCriticalSection(&m_crsCommand);
+            user.Format(CMD_AUTH_USER, m_auth.csUserA.GetBuffer());
+            password.Format(CMD_AUTH_PASSWORD, m_auth.csPasswordA.GetBuffer());
+            LeaveCriticalSection(&m_crsCommand);
+
+            QueueSendMessage(user);
+            QueueSendMessage(password);
+            SetEvent(m_hSendEvent);
+            m_bWaitingForAuth = FALSE;
+        }
+    }
     default:
         break;
     }
@@ -376,16 +437,16 @@ void CManagementSession::MessageHandlerLog(LPSTR szLine)
     szToken = strtok_s(szContext, ",", &szContext);
 
     switch (*szToken) {
-    case 'F':
-    case 'N':
-    case 'W':
+    case 'F':   // fatal error
+    case 'N':   // non-fatal error
     {
         szToken = strtok_s(szContext, ",", &szContext);
         InsertDataStatus(VPN_ST_ERROR, szToken);
         break;
     }
-    case 'I':
-    case 'D':
+    case 'W':   // warning
+    case 'I':   // informational
+    case 'D':   // debug
     default:
         break;
     }
@@ -436,10 +497,16 @@ void CManagementSession::MessageHandlerBytecount(LPSTR szLine)
 
 void CManagementSession::MessageHandlerPassword(LPSTR szLine)
 {
-    // this isn't necessary yet
+    PASSREQUEST_T type = PASSREQ_NONE;
+    if (strcmp(szLine, ARG_PASSREQ_AUTH) == 0)
+        type = PASSREQ_AUTH;
+    else if (strcmp(szLine, ARG_PASSREQ_PKEY) == 0)
+        type = PASSREQ_PRIVATEKEY;
 
-    //QueueSendMessage(DEF_OPENVPN_PASSWORD);
-    //SetEvent(m_hSendEvent);
+    if (type != PASSREQ_NONE) {
+        m_bWaitingForAuth = TRUE;
+        InsertDataPassword(type);
+    }
 }
 
 void CManagementSession::MessageHandlerSuccess(LPSTR szLine)
@@ -487,14 +554,23 @@ void CManagementSession::InsertDataStatus(VPN_STATUS status, LPSTR szArg)
 void CManagementSession::InsertDataBytecount(ULONGLONG ullBytesIn, ULONGLONG ullBytesOut)
 {
     m_data.Lock();
-    BYTECOUNT_T *pb = &m_data.bytecounts.data[m_data.bytecounts.uiIndex];
-    pb->ullBytesIn = ullBytesIn;
-    pb->ullBytesOut = ullBytesOut;
-    GetSystemTimeAsFileTime(&pb->ftTimestamp);
+    BYTECOUNTS_T::COUNT_T & cnt = m_data.bytecounts.data[m_data.bytecounts.uiIndex];
+    cnt.ullBytesIn = ullBytesIn;
+    cnt.ullBytesOut = ullBytesOut;
+    GetSystemTimeAsFileTime(&cnt.ftTimestamp);
     (++m_data.bytecounts.uiIndex) %= _countof(m_data.bytecounts.data);
     m_data.dwEvents |= EVENT_BYTECOUNT;
     m_data.Unlock();
 
+    SetEvent(m_args.hDataReadyEvent);
+}
+
+void CManagementSession::InsertDataPassword(PASSREQUEST_T authType)
+{
+    m_data.Lock();
+    m_data.passwordType = authType;
+    m_data.dwEvents |= EVENT_PASSWORD;
+    m_data.Unlock();
     SetEvent(m_args.hDataReadyEvent);
 }
 

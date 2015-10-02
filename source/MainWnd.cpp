@@ -3,6 +3,7 @@
 #include "Utils.h"
 #include "DlgProfiles.h"
 #include "DlgSettings.h"
+#include "DlgAuth.h"
 #include "MainWnd.h"
 
 // tray menu items message IDs
@@ -67,6 +68,7 @@ BEGIN_MESSAGE_MAP(CMainWnd, CWnd)
     ON_MESSAGE(WM_TRAY_EVENT, OnTrayEvent)
     ON_MESSAGE(WM_STATUS_EVENT, OnStatusEvent)
     ON_MESSAGE(WM_BYTECOUNT_EVENT, OnByteCountEvent)
+    ON_MESSAGE(WM_AUTHREQUEST_EVENT, OnAuthRequestEvent)
 END_MESSAGE_MAP()
 
 int CMainWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -185,12 +187,17 @@ LRESULT CMainWnd::OnStatusEvent(WPARAM wParam, LPARAM lParam)
 {
     UINT uiErrorID;
     VPN_STATUS status = m_pController->GetStatus(&uiErrorID);
+    BOOL bNotify = TRUE;
     
     switch (status)
     {
     case VPN_ST_CONNECTING:
+        bNotify = FALSE;
         m_pConfig->LockSettings(TRUE);
         if (m_pdlgChild) ::PostMessage(m_pdlgChild->GetSafeHwnd(), WM_SETTINGS_EVENT, TRUE, 0);
+        break;
+    case VPN_ST_DISCONNECTING:
+        bNotify = FALSE;
         break;
     case VPN_ST_DISCONNECTED:
     case VPN_ST_ERROR:
@@ -205,13 +212,25 @@ LRESULT CMainWnd::OnStatusEvent(WPARAM wParam, LPARAM lParam)
         break;
     }
 
-    m_trayNotifier.Notify(status, ConstructNotifyText(status, uiErrorID));
+    if (bNotify) m_trayNotifier.Notify(status, ConstructNotifyText(status, uiErrorID));
 
     return 0;
 }
+
 LRESULT CMainWnd::OnByteCountEvent(WPARAM wParam, LPARAM lParam)
 {
+    // this is empty, byte count is on request only
 
+    return 0;
+}
+
+LRESULT CMainWnd::OnAuthRequestEvent(WPARAM wParam, LPARAM lParam)
+{
+    CDlgAuth dlgAuth(m_pController->GetActiveProfileName(), this);
+    if (dlgAuth.DoModal() == IDOK)
+        m_pController->SetAuthInfo(dlgAuth.GetAuthUser(), dlgAuth.GetAuthPassword());
+    else
+        m_pController->SetAuthCancel();
 
     return 0;
 }
@@ -313,8 +332,7 @@ void CMainWnd::DisplayChildDialog(CDialog *pDlg)
 
 CString CMainWnd::ConstructTrafficStatsTip()
 {
-    CController::TRAFFIC_DATA_T data;
-    m_pController->GetTrafficData(data);
+    CController::TRAFFIC_DATA_T data = m_pController->GetTrafficData();
 
     TCHAR szSpeedDownload[64];
     TCHAR szSpeedUpload[64];
@@ -329,8 +347,7 @@ CString CMainWnd::ConstructTrafficStatsTip()
     TCHAR szUptime[64];
     CUtils::FormatTimeElapsed(data.ullTotalTime, szUptime, _countof(szUptime));
 
-    CString csIP;
-    m_pController->GetExternalIP(csIP);
+    CString csIP = m_pController->GetExternalIP();
 
     CString csLabelIP, csLabelUptime;
     csLabelIP.LoadString(IDS_STR_EXTERNAL_IP);
@@ -350,20 +367,20 @@ CString CMainWnd::ConstructNotifyText(VPN_STATUS status, UINT uiStringID)
     switch (status)
     {
     case VPN_ST_CONNECTED:
-        m_pController->GetActiveProfileName(csProfileName);
-        m_pController->GetExternalIP(csIP);
+        csProfileName = m_pController->GetActiveProfileName();
+        csIP = m_pController->GetExternalIP();
         csText.Format(IDS_INFO_CONNECTED_TEXT, csProfileName, csIP);
         break;
     case VPN_ST_DISCONNECTED:
-        m_pController->GetActiveProfileName(csProfileName);
+        csProfileName = m_pController->GetActiveProfileName();
         csText.Format(IDS_INFO_DISCONNECTED_TEXT, csProfileName);
         break;
     case VPN_ST_CONNECTING:
-        m_pController->GetActiveProfileName(csProfileName);
+        csProfileName = m_pController->GetActiveProfileName();
         csText.Format(IDS_INFO_CONNECTING_TEXT, csProfileName);
         break;
     case VPN_ST_DISCONNECTING:
-        m_pController->GetActiveProfileName(csProfileName);
+        csProfileName = m_pController->GetActiveProfileName();
         csText.Format(IDS_INFO_DISCONNECTING_TEXT, csProfileName);
         break;
     case VPN_ST_ERROR:

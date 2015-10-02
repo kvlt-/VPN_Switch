@@ -17,7 +17,8 @@
 #define WM_TRAY_EVENT           (WM_USER+1)     // tray icon mouse clicked/hovered
 #define WM_STATUS_EVENT         (WM_USER+2)     // connection status has been changed
 #define WM_BYTECOUNT_EVENT      (WM_USER+3)     // connection traffic data have been updated
-#define WM_SETTINGS_EVENT       (WM_USER+4)     // settings have been locked/unlocked
+#define WM_AUTHREQUEST_EVENT    (WM_USER+4)     // connection requires user/password authentication
+#define WM_SETTINGS_EVENT       (WM_USER+5)     // settings have been locked/unlocked
 
 // main connection status
 typedef enum
@@ -35,7 +36,9 @@ typedef enum
 {
     VPN_CMD_NONE,
     VPN_CMD_CONNECT,
-    VPN_CMD_DISCONNECT
+    VPN_CMD_DISCONNECT,
+    VPN_CMD_AUTHINFO,
+    VPN_CMD_AUTHCANCEL
 } VPN_COMMAND;
 
 // VPN profile definiton

@@ -167,6 +167,9 @@ void CController::HandleManagementData()
     if (dwEvents & CManagementSession::EVENT_BYTECOUNT) {
         UpdateTrafficData();
     }
+    if (dwEvents & CManagementSession::EVENT_PASSWORD) {
+        RetrieveUserPassword();
+    }
 }
 
 VPN_STATUS CController::GetStatus(PUINT puiErrorID)
@@ -203,35 +206,60 @@ void CController::SetActiveProfile(UINT uiProfile)
     m_state.Unlock();
 
 }
-void CController::GetActiveProfileName(CString &csProfileName)
+
+void CController::SetAuthInfo(LPCTSTR szUser, LPCTSTR szPassword)
 {
+    if (m_pManagementSession) {
+        CManagementSession::AUTHINFO_T auth;
+        auth.csUserA = CT2A(szUser);
+        auth.csPasswordA = CT2A(szPassword);
+        m_pManagementSession->SetAuthInfo(auth);
+    }
+}
+
+void CController::SetAuthCancel()
+{
+    if (m_pManagementSession) {
+        m_pManagementSession->SetAuthCancel();
+    }
+
+}
+
+CString CController::GetActiveProfileName()
+{
+    CString ret;
     m_state.Lock();
-    csProfileName = m_state.profile.csName;
+    ret = m_state.profile.csName;
     m_state.Unlock();
+    return ret;
 }
 
-void CController::GetActiveProfileConfPath(CString &csConfPath)
+CString CController::GetActiveProfileConfPath()
 {
+    CString ret;
     m_state.Lock();
-    csConfPath = m_state.profile.csConfPath;
+    ret = m_state.profile.csConfPath;
     m_state.Unlock();
-
+    return ret;
 }
 
-void CController::GetExternalIP(CString &csExternalIP)
+CString CController::GetExternalIP()
 {
-    if (m_pManagementSession) m_pManagementSession->GetExternalIP(csExternalIP);
+    if (m_pManagementSession)
+        return m_pManagementSession->GetExternalIP();
+    else
+        return CString();
 }
 
-void CController::GetTrafficData(CController::TRAFFIC_DATA_T &data)
+CController::TRAFFIC_DATA_T CController::GetTrafficData()
 {
     CManagementSession::BYTECOUNTS_T bcs;
     FILETIME ftConnectTime;
-    m_pManagementSession->GetByteCounts(&bcs, &ftConnectTime);
+    m_pManagementSession->GetByteCounts(bcs, ftConnectTime);
 
     UINT uiIndex = bcs.uiIndex > 0 ? bcs.uiIndex - 1 : _countof(bcs.data) - 1;
-    CManagementSession::BYTECOUNT_T *pbcLast = &bcs.data[uiIndex];
-    CManagementSession::BYTECOUNT_T *pbcFirst = NULL;
+    CManagementSession::BYTECOUNTS_T::COUNT_T *pbcLast = &bcs.data[uiIndex];
+    CManagementSession::BYTECOUNTS_T::COUNT_T *pbcFirst = NULL;
     do {
         uiIndex  = uiIndex > 0 ? uiIndex - 1 : _countof(bcs.data) - 1;
         if (((PLARGE_INTEGER)&bcs.data[uiIndex].ftTimestamp)->QuadPart == 0) break;
@@ -256,11 +284,14 @@ void CController::GetTrafficData(CController::TRAFFIC_DATA_T &data)
     FILETIME ftTime;
     GetSystemTimeAsFileTime(&ftTime);
 
+    CController::TRAFFIC_DATA_T data;
     data.ullTotalTime   = CUtils::FiletimeDiff(&ftTime, &ftConnectTime);
     data.ullTotalInKb   = pbcLast->ullBytesIn >> 10;
     data.ullTotalOutKb  = pbcLast->ullBytesOut >> 10;
     data.dwSpeedInKbs   = (DWORD)((ullBytesInDiff >> 10) / ullTimeDiff);
     data.dwSpeedOutKbs  = (DWORD)((ullBytesOutDiff >> 10) / ullTimeDiff);
+
+    return data;
 }
 
 VPN_COMMAND CController::GetCommand()
@@ -313,7 +344,28 @@ void CController::UpdateStatus()
 
 void CController::UpdateTrafficData()
 {
-    if (GetStatus() == VPN_ST_CONNECTED && m_hMainWnd) ::PostMessage(m_hMainWnd, WM_BYTECOUNT_EVENT, NULL, NULL);
+    if (GetStatus() == VPN_ST_CONNECTED && m_hMainWnd)
+        ::PostMessage(m_hMainWnd, WM_BYTECOUNT_EVENT, NULL, NULL);
+}
+
+void CController::RetrieveUserPassword()
+{
+    switch (m_pManagementSession->GetPasswordRequestType())
+    {
+    case CManagementSession::PASSREQ_AUTH:
+    {
+        if (m_hMainWnd)
+            ::PostMessage(m_hMainWnd, WM_AUTHREQUEST_EVENT, NULL, NULL);
+        break;
+    }
+    case CManagementSession::PASSREQ_PRIVATEKEY:
+    {
+        //TODO: private key retrieval
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 BOOL CController::ConnectOpenVPN()
@@ -367,13 +419,14 @@ BOOL CController::StartOpenVPNProcess()
         UINT uiPort = m_pConfig->GetPort();
         if (!CUtils::IsPortAvailable(uiPort)) { bRet = FALSE; break; }
 
-        CString csConfPath;
-        GetActiveProfileConfPath(csConfPath);
+        CString csConfPath = GetActiveProfileConfPath();
 
         // http://openvpn.net/index.php/open-source/documentation/manuals/65-openvpn-20x-manpage.html
         CString csCommandLine;
         csCommandLine.Format(
-            _T("%s --config \"%s\" --service %s 0 --log \"%s\" --suppress-timestamps --auth-retry nointeract --management 127.0.0.1 %u stdin --management-query-passwords --management-hold"),
+            _T("%s --config \"%s\" --service %s 0 --log \"%s\""\
+                " --management 127.0.0.1 %u stdin --management-query-passwords --management-hold"
+                " --suppress-timestamps --auth-retry nointeract --auth-nocache"),
             m_pConfig->GetOVPNExeName(),
             csConfPath,
             m_csCloseOpenVPNEventName,
