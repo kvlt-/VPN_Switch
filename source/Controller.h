@@ -58,7 +58,7 @@ protected:
 protected:
     CConfiguration *m_pConfig;
     CManagementSession *m_pManagementSession;
-    CDNSLeaks m_DNSLeaks;
+    CDNSLeaksPrevention m_DNSLeaks;
 
     HANDLE m_hThread;
     HWND m_hMainWnd;

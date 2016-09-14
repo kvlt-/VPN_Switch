@@ -103,8 +103,9 @@ void CTrayNotifier::Notify(VPN_STATUS status, LPCTSTR szText)
     if (!m_trayData.cbSize) return;
 
     CString csTitle;
+    BOOL bInfo = FALSE;
 
-    m_trayData.uFlags       = NIF_INFO | NIF_ICON | NIF_TIP;
+    m_trayData.uFlags       = NIF_TIP | NIF_ICON;
     m_trayData.dwInfoFlags  = NIIF_NOSOUND | NIIF_INFO;
 
     switch (status)
@@ -112,10 +113,12 @@ void CTrayNotifier::Notify(VPN_STATUS status, LPCTSTR szText)
     case VPN_ST_CONNECTED:
         m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_GREEN));
         csTitle.LoadString(IDS_INFO_CONNECTED);
+        bInfo = TRUE;
         break;
     case VPN_ST_DISCONNECTED:
         m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_DARK));
         csTitle.LoadString(IDS_INFO_DISCONNECTED);
+        bInfo = TRUE;
         break;
     case VPN_ST_CONNECTING:
         m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_ORANGE));
@@ -129,13 +132,17 @@ void CTrayNotifier::Notify(VPN_STATUS status, LPCTSTR szText)
         m_trayData.dwInfoFlags = NIIF_NOSOUND | NIIF_ERROR;
         m_trayData.hIcon = LoadIcon(AfxGetResourceHandle(), MAKEINTRESOURCE(IDI_DARK));
         csTitle.LoadString(IDS_STR_ERROR);
+        bInfo = TRUE;
         break;
     default:
         break;
     }
 
-    _tcscpy_s(m_trayData.szInfoTitle, _countof(m_trayData.szInfoTitle), csTitle);
-    _tcscpy_s(m_trayData.szInfo, _countof(m_trayData.szInfo), szText);
+    if (bInfo) {
+        m_trayData.uFlags |= NIF_INFO;
+        _tcscpy_s(m_trayData.szInfoTitle, _countof(m_trayData.szInfoTitle), csTitle);
+        _tcscpy_s(m_trayData.szInfo, _countof(m_trayData.szInfo), szText);
+    }
     _stprintf_s(m_trayData.szTip, _countof(m_trayData.szTip), _T("%s\r\n%s"), DEF_APP_NAME, csTitle.GetBuffer());
 
     Shell_NotifyIcon(NIM_MODIFY, &m_trayData);

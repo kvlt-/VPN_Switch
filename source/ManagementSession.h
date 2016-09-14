@@ -65,6 +65,7 @@ public:
 
     DWORD GetEvents();     // combinations of EVENT_T values
 
+    CString GetLocalIP();
     CString GetExternalIP();
     void GetByteCounts(BYTECOUNTS_T &bytecounts, FILETIME & ftConnectTime);
     PASSREQUEST_T GetPasswordRequestType();
@@ -88,6 +89,7 @@ protected:
         CManagementSession::BYTECOUNTS_T bytecounts;
         FILETIME ftConnectTime;
         VPN_STATUS status;
+        CString csLocalIP;
         CString csExternalIP;
         PASSREQUEST_T passwordType;
 
@@ -98,6 +100,7 @@ protected:
             ZeroMemory(&bytecounts, sizeof(bytecounts));
             ZeroMemory(&ftConnectTime, sizeof(ftConnectTime));
             status = VPN_ST_DISCONNECTED;
+            csLocalIP.Empty();
             csExternalIP.Empty();
             passwordType = PASSREQ_NONE;
         }
@@ -148,7 +151,7 @@ protected:
 
     VPN_COMMAND GetCommand();
 
-    void InsertDataStatus(VPN_STATUS status, LPSTR szArg = NULL);
+    void InsertDataStatus(VPN_STATUS status, LPSTR szArg1 = NULL, LPSTR szArg2 = NULL);
     void InsertDataBytecount(ULONGLONG ullBytesIn, ULONGLONG ullBytesOut);
     void InsertDataPassword(PASSREQUEST_T authType);
     void InsertDataLog(LPSTR szLine);

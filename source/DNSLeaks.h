@@ -1,29 +1,27 @@
 #pragma once
 
 
-class CDNSLeaks
+class CDNSLeaksPrevention
 {
 public:
-    CDNSLeaks();
-    ~CDNSLeaks();
+    CDNSLeaksPrevention();
+    ~CDNSLeaksPrevention();
 
-    BOOL Prevent(BOOL bEnable, BOOL bForce = FALSE);
+    BOOL Enable(LPCTSTR szVPNAdapterIP = NULL);
+    BOOL Disable();
 
-protected:
-    typedef enum
-    {
-        METHOD_NONE = 0,
-        METHOD_FW,
-        METHOD_ROUTES,
-        METHOD_INTERFACES
-    } METHOD;
+private:
+    BOOL m_bFirewalled = FALSE;
+    BOOL m_bPrioritized = FALSE;
+    BOOL m_bInitialized = FALSE;
+    CString m_csAdapterIP;
+    long m_lIPMetric = 0;
 
-protected:
-    BOOL m_bPreventing;
-    METHOD m_method;
+private:
+    BOOL FirewallDNSServers(BOOL bEnable);
+    BOOL PrioritizeVPNInterface(BOOL bEnable);
+    BOOL PrioritizeVPNInterfaceWMI(BOOL bEnable, int & iInterfaceIndex);
 
-protected:
     BSTR GetBlockedDNSServers();
-
 };
 

@@ -13,8 +13,6 @@ CDlgAuth::~CDlgAuth()
 
 void CDlgAuth::DoDataExchange(CDataExchange * pDX)
 {
-    CDialog::DoDataExchange(pDX);
-
     DDX_Text(pDX, IDC_AUTH_USER, m_csUser);
     DDX_Text(pDX, IDC_AUTH_PASS, m_csPass);
 }
@@ -32,7 +30,7 @@ BOOL CDlgAuth::OnInitDialog()
         screen_rect.bottom - dlg_rect.Height());
     MoveWindow(&dlg_rect, TRUE);
 
-    this->SetWindowText(m_csProfileName);
+    SetWindowText(m_csProfileName);
     GetDlgItem(IDC_AUTH_USER)->SetWindowText(_T("user"));
     GetDlgItem(IDC_AUTH_PASS)->SetWindowText(_T("pass"));
 

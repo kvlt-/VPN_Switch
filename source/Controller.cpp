@@ -288,8 +288,8 @@ CController::TRAFFIC_DATA_T CController::GetTrafficData()
     data.ullTotalTime   = CUtils::FiletimeDiff(&ftTime, &ftConnectTime);
     data.ullTotalInKb   = pbcLast->ullBytesIn >> 10;
     data.ullTotalOutKb  = pbcLast->ullBytesOut >> 10;
-    data.dwSpeedInKbs   = (DWORD)((ullBytesInDiff >> 10) / ullTimeDiff);
-    data.dwSpeedOutKbs  = (DWORD)((ullBytesOutDiff >> 10) / ullTimeDiff);
+    data.dwSpeedInKbs   = ullTimeDiff ? (DWORD)((ullBytesInDiff >> 10) / ullTimeDiff) : 0;
+    data.dwSpeedOutKbs  = ullTimeDiff ? (DWORD)((ullBytesOutDiff >> 10) / ullTimeDiff) : 0;
 
     return data;
 }
@@ -325,14 +325,14 @@ void CController::UpdateStatus()
     else {
         if (status == VPN_ST_CONNECTED) {
             if (m_pConfig->GetPreventDNSLeaks()) {
-                m_DNSLeaks.Prevent(TRUE);
+                m_DNSLeaks.Enable(m_pManagementSession->GetLocalIP());
             }
         }
         else {
             VPN_STATUS prevStatus = GetStatus();
             if (prevStatus == VPN_ST_CONNECTED) {
                 if (m_pConfig->GetPreventDNSLeaks()) {
-                    m_DNSLeaks.Prevent(FALSE);
+                    m_DNSLeaks.Disable();
                 }
             }
             else if (status == VPN_ST_DISCONNECTED && prevStatus == VPN_ST_ERROR)
@@ -406,7 +406,7 @@ void CController::DisconnectOpenVPN()
 {
     if (GetStatus() == VPN_ST_CONNECTED) SetStatus(VPN_ST_DISCONNECTING);
 
-    if (m_pConfig->GetPreventDNSLeaks()) m_DNSLeaks.Prevent(FALSE);
+    if (m_pConfig->GetPreventDNSLeaks()) m_DNSLeaks.Disable();
     StopOpenVPNProcess();   // attempt graceful exit via global event
     if (m_pManagementSession) m_pManagementSession->Stop(); // possible SIGTERM close
 }

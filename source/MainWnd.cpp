@@ -187,17 +187,14 @@ LRESULT CMainWnd::OnStatusEvent(WPARAM wParam, LPARAM lParam)
 {
     UINT uiErrorID;
     VPN_STATUS status = m_pController->GetStatus(&uiErrorID);
-    BOOL bNotify = TRUE;
     
     switch (status)
     {
     case VPN_ST_CONNECTING:
-        bNotify = FALSE;
         m_pConfig->LockSettings(TRUE);
         if (m_pdlgChild) ::PostMessage(m_pdlgChild->GetSafeHwnd(), WM_SETTINGS_EVENT, TRUE, 0);
         break;
     case VPN_ST_DISCONNECTING:
-        bNotify = FALSE;
         break;
     case VPN_ST_DISCONNECTED:
     case VPN_ST_ERROR:
@@ -212,7 +209,7 @@ LRESULT CMainWnd::OnStatusEvent(WPARAM wParam, LPARAM lParam)
         break;
     }
 
-    if (bNotify) m_trayNotifier.Notify(status, ConstructNotifyText(status, uiErrorID));
+    m_trayNotifier.Notify(status, ConstructNotifyText(status, uiErrorID));
 
     return 0;
 }

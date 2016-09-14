@@ -170,6 +170,15 @@ VPN_COMMAND CManagementSession::GetCommand()
     return command;
 }
 
+CString CManagementSession::GetLocalIP()
+{
+    CString ret;
+    m_data.Lock();
+    ret = m_data.csLocalIP;
+    m_data.Unlock();
+    return ret;
+}
+
 CString CManagementSession::GetExternalIP()
 {
     CString ret;
@@ -457,15 +466,17 @@ void CManagementSession::MessageHandlerState(LPSTR szLine)
     LPSTR szToken       = NULL;
     LPSTR szContext     = NULL;
 
-    szToken = strtok_s(szLine, ",", &szContext);
-    szToken = strtok_s(szContext, ",", &szContext);
+    // >STATE:datetime,state,description,local_IP,remote_IP
+
+    szToken = strtok_s(szLine, ",", &szContext);        // datetime
+    szToken = strtok_s(szContext, ",", &szContext);     // state
 
     if (strcmp(szToken, STATE_CONNECTED) == 0) {
-        szToken = strtok_s(szContext, ",", &szContext);
+        szToken = strtok_s(szContext, ",", &szContext); // description
         if (strcmp(szToken, MSG_SUCCESS) == 0) {
-            szToken = strtok_s(szContext, ",", &szContext);
-            szToken = strtok_s(szContext, ",", &szContext);
-            InsertDataStatus(VPN_ST_CONNECTED, szToken);
+            LPSTR szLocalIP = strtok_s(szContext, ",", &szContext);
+            LPSTR szExternalIP = strtok_s(szContext, ",", &szContext);
+            InsertDataStatus(VPN_ST_CONNECTED, szLocalIP, szExternalIP);
         }
     }
     else if (strcmp(szToken, STATE_RECONNECTING) == 0) {
@@ -537,11 +548,12 @@ void CManagementSession::MessageHandlerError(LPSTR szLine)
     InsertDataStatus(VPN_ST_ERROR, szLine);
 }
 
-void CManagementSession::InsertDataStatus(VPN_STATUS status, LPSTR szArg)
+void CManagementSession::InsertDataStatus(VPN_STATUS status, LPSTR szArg1, LPSTR szArg2)
 {
     m_data.Lock();
     if (status == VPN_ST_CONNECTED) {
-        if (szArg) m_data.csExternalIP = szArg;
+        if (szArg1) m_data.csLocalIP = szArg1;
+        if (szArg2) m_data.csExternalIP = szArg2;
         GetSystemTimeAsFileTime(&m_data.ftConnectTime);
     }
     m_data.status = status;
